@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
+use App\Models\Carrito;
 
 class AuthController extends Controller
 {
@@ -60,6 +62,99 @@ class AuthController extends Controller
             return response()->json(['error' => 'No se pudo crear el token'], 500);
         }
     }
+
+       // FUNCION PARA REGISTRAR UN USUARIO
+       public function registerUser(Request $request)
+       {
+           $messages = [
+               'username.required' => 'El nombre de usuario es obligatorio.',
+               'username.unique' => 'El nombre de usuario ya está en uso.',
+               'rol.required' => 'El rol es obligatorio.',
+               'nombres.required' => 'El nombre es obligatorio.',
+               'apellidos.required' => 'Los apellidos son obligatorios.',
+               'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
+               'dni.required' => 'El DNI es obligatorio.',
+               'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
+               'dni.unique' => 'El DNI ya está registrado.',
+               'correo.required' => 'El correo es obligatorio.',
+               'correo.email' => 'El correo debe tener un formato válido.',
+               'correo.unique' => 'El correo ya está registrado.',
+               'edad.integer' => 'La edad debe ser un número entero.',
+               'edad.between' => 'La edad debe ser mayor a 18.',
+               'nacimiento.date' => 'La fecha de nacimiento debe ser una fecha válida.',
+               'nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
+               'password.required' => 'La contraseña es obligatoria.',
+               'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+               'password.regex' => 'La contraseña debe incluir al menos una mayúscula y un símbolo.',
+               'password.confirmed' => 'Las contraseñas no coinciden.',
+           ];
+       
+           $validator = Validator::make($request->all(), [
+               'username' => 'required|string|max:255|unique:usuarios',
+               'rol' => 'required|string|max:255',
+               'nombres' => 'required|string|max:255',
+               'apellidos' => [
+                   'required',
+                   'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
+               ],
+               'dni' => 'required|string|size:8|unique:usuarios',
+               'correo' => 'required|string|email|max:255|unique:usuarios',
+               'edad' => 'nullable|integer|between:18,100',
+               'nacimiento' => 'nullable|date|before:today',
+               'telefono' => 'nullable|string|size:9|regex:/^\d{9}$/',
+               'departamento' => 'nullable|string|max:255',
+               'password' => [
+                   'required',
+                   'string',
+                   'min:8',
+                   'max:255',
+                   'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/',
+               ]
+           ], $messages);
+       
+           if ($validator->fails()) {
+               return response()->json([
+                   'success' => false,
+                   'errors' => $validator->errors(),
+               ], 400);
+           }
+       
+           try {
+               // Registrar el usuario
+               $user = Usuario::create([
+                   'username' => $request->username,
+                   'rol' => $request->rol,
+                   'nombres' => $request->nombres,
+                   'apellidos' => $request->apellidos,
+                   'dni' => $request->dni,
+                   'correo' => $request->correo,
+                   'edad' => $request->edad ?? null,
+                   'nacimiento' => $request->nacimiento ?? null,
+                   'telefono' => $request->telefono ?? null,
+                   'departamento' => $request->departamento ?? null,
+                   'password' => bcrypt($request->password),
+                   'status' => 'loggedOff',
+               ]);
+       
+               // Crear el carrito asociado al usuario
+               $carrito = new Carrito();
+               $carrito->idUsuario = $user->idUsuario; // Asignar el idUsuario al carrito
+               $carrito->save(); // Guardar el carrito
+       
+               // Devolver respuesta con éxito
+               return response()->json([
+                   'success' => true,
+                   'message' => 'Usuario registrado y carrito creado exitosamente',
+               ], 201);
+       
+           } catch (\Exception $e) {
+               return response()->json([
+                   'success' => false,
+                   'message' => 'Error al registrar el usuario y crear el carrito',
+                   'error' => $e->getMessage(),
+               ], 500);
+           }
+       }
 
 
     /**

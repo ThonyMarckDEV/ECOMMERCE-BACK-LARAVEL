@@ -14,14 +14,14 @@ use App\Http\Controllers\AuthController;
 
         //RUTA PARA QUE LOS USUAIOS SE LOGEEN POR EL CONTROLLADOR AUTHCONTROLLER
         Route::post('login', [AuthController::class, 'login']);
+        
+        Route::post('/registerUser', [AuthController::class, 'registerUser']);
 
         Route::post('logout', [AuthController::class, 'logout']);
 
         Route::post('refresh-token', [AuthController::class, 'refreshToken']);
 
         Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
-
-        Route::post('/registerUser', [ClienteController::class, 'registerUser']);
 
         Route::post('/check-status', [AuthController::class, 'checkStatus']);
 

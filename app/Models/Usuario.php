@@ -41,6 +41,7 @@ class Usuario extends Authenticatable implements JWTSubject
             'correo' => $this->correo,
             'estado' => $this->status, 
             'rol' => $this->rol,
+            'perfil' => $this->perfil,
             'idCarrito' => $carrito ? $carrito->idCarrito : null, // Agrega idCarrito al JWT
         ];
     }
