@@ -94,7 +94,7 @@ class AuthController extends Controller
                'rol' => 'required|string|max:255',
                'nombres' => 'required|string|max:255',
                'apellidos' => [
-                   'required',
+                   'required',  
                    'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
                ],
                'dni' => 'required|string|size:8|unique:usuarios',
@@ -103,13 +103,13 @@ class AuthController extends Controller
                'nacimiento' => 'nullable|date|before:today',
                'telefono' => 'nullable|string|size:9|regex:/^\d{9}$/',
                'departamento' => 'nullable|string|max:255',
-               'password' => [
-                   'required',
-                   'string',
-                   'min:8',
-                   'max:255',
-                   'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/',
-               ]
+              'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'max:255',
+                    'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_])[A-Za-z\d!@#$%^&*(),.?":{}|<>_]{8,}$/',
+                ]
            ], $messages);
        
            if ($validator->fails()) {
