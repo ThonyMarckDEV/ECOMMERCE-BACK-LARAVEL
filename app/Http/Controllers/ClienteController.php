@@ -262,6 +262,36 @@ class ClienteController extends Controller
         }
     }
 
+    // public function listarCarrito()
+    // {
+    //     try {
+    //         $userId = Auth::id();
+    
+    //         // Obtener los productos en el carrito del usuario autenticado
+    //         $carritoDetalles = CarritoDetalle::with('producto')
+    //             ->whereHas('carrito', function($query) use ($userId) {
+    //                 $query->where('idUsuario', $userId);
+    //             })
+    //             ->get();
+    
+    //         $productos = $carritoDetalles->map(function($detalle) {
+    //             return [
+    //                 'idProducto' => $detalle->producto->idProducto,
+    //                 'nombreProducto' => $detalle->producto->nombreProducto,
+    //                 'descripcion' => $detalle->producto->descripcion,
+    //                 'cantidad' => $detalle->cantidad,
+    //                 'precio' => (float) $detalle->precio, // Asegura que sea un float
+    //                 'subtotal' => (float) ($detalle->precio * $detalle->cantidad),
+    //                 'stock' => (int) $detalle->producto->stock, // Incluir el stock del producto
+    //             ];
+    //         });
+            
+    //         return response()->json(['success' => true, 'data' => $productos], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
+    //     }
+    // }
+
     public function listarCarrito()
     {
         try {
@@ -279,6 +309,7 @@ class ClienteController extends Controller
                     'idProducto' => $detalle->producto->idProducto,
                     'nombreProducto' => $detalle->producto->nombreProducto,
                     'descripcion' => $detalle->producto->descripcion,
+                    'cantidad' => $detalle->cantidad,
                     'precio' => (float) $detalle->precio,
                     'subtotal' => (float) ($detalle->precio * $detalle->cantidad),
                     'stock' => (int) $detalle->producto->stock,
