@@ -112,6 +112,7 @@ use App\Http\Controllers\AuthController;
         Route::post('/procesar-pago/{idPedido}', [ClienteController::class, 'procesarPago']);
     
         Route::get('/carrito/cantidad', [ClienteController::class, 'obtenerCantidadCarrito']);
+        
         Route::post('/pedidos/cantidad', [ClienteController::class, 'obtenerCantidadPedidos']);
 
 

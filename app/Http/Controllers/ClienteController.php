@@ -197,38 +197,62 @@ class ClienteController extends Controller
         try {
             // Obtener el producto y verificar el stock
             $producto = Producto::find($validatedData['idProducto']);
+            $cantidadAgregar = $validatedData['cantidad'];
     
-            // Obtener la cantidad actual del producto en el carrito del usuario
-            $cantidadEnCarrito = CarritoDetalle::where('idCarrito', function ($query) use ($validatedData) {
-                $query->select('idCarrito')
-                      ->from('carrito')
-                      ->where('idUsuario', $validatedData['idUsuario'])
-                      ->limit(1);
-            })
-            ->where('idProducto', $validatedData['idProducto'])
-            ->sum('cantidad');
-    
-            // Calcular la cantidad total después de la nueva adición
-            $cantidadTotal = $cantidadEnCarrito + $validatedData['cantidad'];
-    
-            // Verificar si la cantidad total excede el stock disponible
-            if ($cantidadTotal > $producto->stock) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'La cantidad total en el carrito supera el stock disponible',
-                ], 400);
-            }
-    
-            // Encuentra o crea el carrito del usuario
+            // Obtener el carrito del usuario
             $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
     
-            // Crea o actualiza el detalle en el carrito
-            CarritoDetalle::updateOrCreate(
-                ['idCarrito' => $carrito->idCarrito, 'idProducto' => $validatedData['idProducto']],
-                ['cantidad' => $cantidadTotal, 'precio' => $producto->precio]
-            );
+            // Verificar si el producto ya está en el carrito
+            $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
+                                            ->where('idProducto', $validatedData['idProducto'])
+                                            ->first();
     
-            return response()->json(['success' => true, 'message' => 'Producto agregado al carrito'], 201);
+            // Si el producto ya está en el carrito
+            if ($carritoDetalle) {
+                // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
+                $nuevaCantidad = $carritoDetalle->cantidad + $cantidadAgregar;
+    
+                // Verificar si la cantidad total excede el stock disponible
+                if ($nuevaCantidad > $producto->stock) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La cantidad total en el carrito supera el stock disponible',
+                    ], 400);
+                }
+    
+                // Actualizar la cantidad y recalcular el precio total
+                $nuevoPrecio = $producto->precio * $nuevaCantidad;
+    
+                // Actualizar el detalle del carrito
+                $carritoDetalle->update([
+                    'cantidad' => $nuevaCantidad,
+                    'precio' => $nuevoPrecio
+                ]);
+            } else {
+                // Si el producto no está en el carrito, lo agregamos
+                // Verificar si la cantidad no supera el stock disponible
+                if ($cantidadAgregar > $producto->stock) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La cantidad solicitada excede el stock disponible',
+                    ], 400);
+                }
+    
+                // Crear un nuevo detalle en el carrito
+                $nuevoPrecio = $producto->precio * $cantidadAgregar;
+                CarritoDetalle::create([
+                    'idCarrito' => $carrito->idCarrito,
+                    'idProducto' => $validatedData['idProducto'],
+                    'cantidad' => $cantidadAgregar,
+                    'precio' => $nuevoPrecio
+                ]);
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Producto agregado al carrito con éxito',
+            ], 201);
+    
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -237,38 +261,37 @@ class ClienteController extends Controller
             ], 500);
         }
     }
-    
 
     public function listarCarrito()
     {
         try {
             $userId = Auth::id();
-    
+
             // Obtener los productos en el carrito del usuario autenticado
             $carritoDetalles = CarritoDetalle::with('producto')
                 ->whereHas('carrito', function($query) use ($userId) {
                     $query->where('idUsuario', $userId);
                 })
                 ->get();
-    
+
             $productos = $carritoDetalles->map(function($detalle) {
                 return [
                     'idProducto' => $detalle->producto->idProducto,
                     'nombreProducto' => $detalle->producto->nombreProducto,
                     'descripcion' => $detalle->producto->descripcion,
-                    'cantidad' => $detalle->cantidad,
-                    'precio' => (float) $detalle->precio, // Asegura que sea un float
+                    'precio' => (float) $detalle->precio,
                     'subtotal' => (float) ($detalle->precio * $detalle->cantidad),
-                    'stock' => (int) $detalle->producto->stock, // Incluir el stock del producto
+                    'stock' => (int) $detalle->producto->stock,
+                    'imagen' => $detalle->producto->imagen,  // Asegúrate de que el campo 'imagen' exista
+                    'idCategoria' => $detalle->producto->idCategoria,
                 ];
             });
-            
+
             return response()->json(['success' => true, 'data' => $productos], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
         }
     }
-
  
     public function actualizarCantidad(Request $request, $idProducto)
     {
