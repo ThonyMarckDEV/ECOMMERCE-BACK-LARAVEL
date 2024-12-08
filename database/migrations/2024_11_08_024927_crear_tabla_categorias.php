@@ -14,6 +14,7 @@ class CrearTablaCategorias extends Migration
             $table->bigIncrements('idCategoria'); // Clave primaria con bigIncrements (unsignedBigInteger)
             $table->string('nombreCategoria');
             $table->string('descripcion', 60)->nullable();
+            $table->string('imagen')->nullable();
         });
     }
 

@@ -119,7 +119,9 @@ class ClienteController extends Controller
         // Obtener los parámetros de la solicitud
         $categoriaId = $request->input('categoria');
         $texto = $request->input('texto');
-        $idProducto = $request->input('idProducto');  // Obtener el parámetro idProducto
+        $idProducto = $request->input('idProducto');
+        $precioInicial = $request->input('precioInicial');
+        $precioFinal = $request->input('precioFinal');
     
         // Construir la consulta para obtener los productos
         $query = Producto::with('categoria:idCategoria,nombreCategoria');
@@ -139,16 +141,19 @@ class ClienteController extends Controller
             $query->where('nombreProducto', 'like', '%' . $texto . '%');
         }
     
+        // Filtrar por rango de precios si se proporcionan
+        if ($precioInicial !== null && $precioFinal !== null) {
+            $query->whereBetween('precio', [$precioInicial, $precioFinal]);
+        }
+    
         // Obtener los productos
         $productos = $query->get();
     
         // Si se pasó un 'idProducto', se devuelve un solo producto
         if ($idProducto) {
-            // Si solo se está buscando un producto específico, se obtiene el primer elemento
             $producto = $productos->first();
     
             if ($producto) {
-                // Transformar el producto para incluir el nombre de la categoría
                 $producto = [
                     'idProducto' => $producto->idProducto,
                     'nombreProducto' => $producto->nombreProducto,
@@ -178,7 +183,6 @@ class ClienteController extends Controller
             ];
         });
     
-        // Retornar la respuesta con todos los productos
         return response()->json(['data' => $productos], 200);
     }
 
