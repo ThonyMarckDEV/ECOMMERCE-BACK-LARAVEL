@@ -105,24 +105,26 @@ use App\Http\Controllers\AuthController;
         Route::put('carrito_detalle/{idProducto}', [ClienteController::class, 'actualizarCantidad']); // Actualizar cantidad de producto
         Route::delete('carrito_detalle/{idProducto}', [ClienteController::class, 'eliminarProducto']); // Eliminar producto del carrito
         
-        Route::post('/pedido', [ClienteController::class, 'crearPedido']);
-        // Ruta para listar pedidos de un usuario
-        Route::get('/pedidos/{idUsuario}', [ClienteController::class, 'listarPedidos']);
+      
+      
         // Ruta para procesar el pago de un pedido
         Route::post('/procesar-pago/{idPedido}', [ClienteController::class, 'procesarPago']);
     
         Route::get('/carrito/cantidad', [ClienteController::class, 'obtenerCantidadCarrito']);
-        
+
+        Route::post('/pedido', [ClienteController::class, 'crearPedido']);
         Route::post('/pedidos/cantidad', [ClienteController::class, 'obtenerCantidadPedidos']);
 
-
+        // Ruta para listar pedidos de un usuario
+        Route::get('/obtenerDireccionPedidoUser/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
+        Route::get('/pedidos/{idUsuario}', [ClienteController::class, 'listarPedidos']);
         Route::get('/listarDireccion/{idUsuario}', [ClienteController::class, 'listarDireccion']);
+
         Route::post('/agregarDireccion', [ClienteController::class, 'agregarDireccion']);
-        Route::put('/actualizarDireccion/{id}', [ClienteController::class, 'actualizarDireccion']);
         Route::delete('/eliminarDireccion/{id}', [ClienteController::class, 'eliminarDireccion']);
         Route::put('/setDireccionUsando/{idDireccion}', [ClienteController::class, 'setDireccionUsando']);
 
-        Route::get('/obtenerDireccionPedidoUser/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
+        
 
         Route::post('/enviarCodigo/{idUsuario}', [ClienteController::class, 'enviarCodigo']);
         Route::post('/verificarCodigo/{idUsuario}', [ClienteController::class, 'verificarCodigo']);

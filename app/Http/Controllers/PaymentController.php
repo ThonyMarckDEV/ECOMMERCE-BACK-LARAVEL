@@ -54,15 +54,15 @@ class PaymentController extends Controller
         // Crear una instancia del cliente de preferencias de MercadoPago
         $client = new PreferenceClient();
     
-        $currentUrlBase = 'https://lifetime-trials-alone-attached.trycloudflare.com'; // DOMINIO DEL FRONT
+        $currentUrlBase = 'https://tell-kinda-griffin-photos.trycloudflare.com'; // DOMINIO DEL FRONT
     
         // URLs de retorno
         $backUrls = [
-            "success" => "{$currentUrlBase}/PHP/CLIENTEPHP/pedidos.php?status=approved&external_reference={$idPedido}&payment_type=online",
-            "failure" => "{$currentUrlBase}/PHP/CLIENTEPHP/pedidos.php?status=failure",
-            "pending" => "{$currentUrlBase}/PHP/CLIENTEPHP/pedidos.php?status=pending"
+            "success" => "{$currentUrlBase}/pedidos?status=approved&external_reference={$idPedido}&payment_type=online",
+            "failure" => "{$currentUrlBase}/pedidos?status=failure&external_reference={$idPedido}",
+            "pending" => "{$currentUrlBase}/pedidos?status=pending&external_reference={$idPedido}"
         ];
-    
+
         // Crear los ítems a partir de los detalles del pedido
         $items = [];
         foreach ($detalles as $detalle) {

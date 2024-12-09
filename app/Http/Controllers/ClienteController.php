@@ -262,73 +262,42 @@ class ClienteController extends Controller
         }
     }
 
-    // public function listarCarrito()
-    // {
-    //     try {
-    //         $userId = Auth::id();
-    
-    //         // Obtener los productos en el carrito del usuario autenticado
-    //         $carritoDetalles = CarritoDetalle::with('producto')
-    //             ->whereHas('carrito', function($query) use ($userId) {
-    //                 $query->where('idUsuario', $userId);
-    //             })
-    //             ->get();
-    
-    //         $productos = $carritoDetalles->map(function($detalle) {
-    //             return [
-    //                 'idProducto' => $detalle->producto->idProducto,
-    //                 'nombreProducto' => $detalle->producto->nombreProducto,
-    //                 'descripcion' => $detalle->producto->descripcion,
-    //                 'cantidad' => $detalle->cantidad,
-    //                 'precio' => (float) $detalle->precio, // Asegura que sea un float
-    //                 'subtotal' => (float) ($detalle->precio * $detalle->cantidad),
-    //                 'stock' => (int) $detalle->producto->stock, // Incluir el stock del producto
-    //             ];
-    //         });
-            
-    //         return response()->json(['success' => true, 'data' => $productos], 200);
-    //     } catch (\Exception $e) {
-    //         return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
-    //     }
-    // }
-
     public function listarCarrito()
     {
         try {
             $userId = Auth::id();
-
+    
             // Obtener los productos en el carrito del usuario autenticado
             $carritoDetalles = CarritoDetalle::with('producto')
                 ->whereHas('carrito', function($query) use ($userId) {
                     $query->where('idUsuario', $userId);
                 })
                 ->get();
-
+    
             $productos = $carritoDetalles->map(function($detalle) {
                 return [
                     'idProducto' => $detalle->producto->idProducto,
                     'nombreProducto' => $detalle->producto->nombreProducto,
                     'descripcion' => $detalle->producto->descripcion,
                     'cantidad' => $detalle->cantidad,
-                    'precio' => (float) $detalle->precio,
-                    'subtotal' => (float) ($detalle->precio * $detalle->cantidad),
+                    'precio' => (float) $detalle->producto->precio, // Cambié esto para que obtenga el precio correcto del producto
+                    'subtotal' => (float) ($detalle->producto->precio * $detalle->cantidad), // Se calcula correctamente
                     'stock' => (int) $detalle->producto->stock,
                     'imagen' => $detalle->producto->imagen,  // Asegúrate de que el campo 'imagen' exista
                     'idCategoria' => $detalle->producto->idCategoria,
                 ];
             });
-
+    
             return response()->json(['success' => true, 'data' => $productos], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
         }
     }
- 
     public function actualizarCantidad(Request $request, $idProducto)
     {
         $userId = Auth::id();
         $cantidad = $request->input('cantidad');
-    
+        
         // Buscar el detalle del carrito que corresponde al producto y usuario autenticado
         $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($userId) {
                 $query->where('carrito.idUsuario', $userId);
@@ -340,7 +309,7 @@ class ClienteController extends Controller
             return response()->json(['success' => false, 'message' => 'Producto no encontrado en el carrito'], 404);
         }
     
-        // Obtener el stock del producto
+        // Obtener el producto
         $producto = Producto::find($idProducto);
         if (!$producto) {
             return response()->json(['success' => false, 'message' => 'Producto no encontrado en la base de datos'], 404);
@@ -354,11 +323,16 @@ class ClienteController extends Controller
             ], 400);
         }
     
-        // Actualizar la cantidad si está dentro del límite del stock
+        // Actualizar la cantidad en el carrito
         $detalle->cantidad = $cantidad;
+    
+        // Actualizar el precio total (subtotal) en el carritoDetalle
+        $detalle->precio = $producto->precio * $cantidad;
+    
+        // Guardar los cambios
         $detalle->save();
     
-        return response()->json(['success' => true, 'message' => 'Cantidad actualizada'], 200);
+        return response()->json(['success' => true, 'message' => 'Cantidad y precio actualizados correctamente'], 200);
     }
  
      // Eliminar un producto del carrito
@@ -479,67 +453,137 @@ class ClienteController extends Controller
     }
         
 
-     public function listarPedidos($idUsuario)
-     {
-         try {
-             // Verificar que el idUsuario existe en la tabla 'usuarios'
-             $usuarioExiste = DB::table('usuarios')->where('idUsuario', $idUsuario)->exists();
-             if (!$usuarioExiste) {
-                 return response()->json([
-                     'success' => false,
-                     'message' => 'Usuario no encontrado.',
-                 ], 404);
-             }
+    //  public function listarPedidos($idUsuario)
+    //  {
+    //      try {
+    //          // Verificar que el idUsuario existe en la tabla 'usuarios'
+    //          $usuarioExiste = DB::table('usuarios')->where('idUsuario', $idUsuario)->exists();
+    //          if (!$usuarioExiste) {
+    //              return response()->json([
+    //                  'success' => false,
+    //                  'message' => 'Usuario no encontrado.',
+    //              ], 404);
+    //          }
  
-             // Obtener los pedidos del usuario, ordenados por 'idPedido' descendente
-             $pedidos = DB::table('pedidos')
-                 ->where('idUsuario', $idUsuario)
-                 ->orderBy('idPedido', 'desc') // Ordenar por idPedido descendente
-                 ->get();
+    //          // Obtener los pedidos del usuario, ordenados por 'idPedido' descendente
+    //          $pedidos = DB::table('pedidos')
+    //              ->where('idUsuario', $idUsuario)
+    //              ->orderBy('idPedido', 'desc') // Ordenar por idPedido descendente
+    //              ->get();
  
-             // Para cada pedido, obtener los detalles (productos)
-             $pedidosConDetalles = [];
+    //          // Para cada pedido, obtener los detalles (productos)
+    //          $pedidosConDetalles = [];
  
-             foreach ($pedidos as $pedido) {
-                 // Obtener los detalles del pedido desde 'pedido_detalle' y 'productos'
-                 $detalles = DB::table('pedido_detalle')
-                     ->where('idPedido', $pedido->idPedido)
-                     ->join('productos', 'pedido_detalle.idProducto', '=', 'productos.idProducto')
-                     ->select(
-                         'pedido_detalle.idDetallePedido',
-                         'productos.idProducto',
-                         'productos.nombreProducto',
-                         'pedido_detalle.cantidad',
-                         'pedido_detalle.precioUnitario',
-                         'pedido_detalle.subtotal'
-                     )
-                     ->get();
+    //          foreach ($pedidos as $pedido) {
+    //              // Obtener los detalles del pedido desde 'pedido_detalle' y 'productos'
+    //              $detalles = DB::table('pedido_detalle')
+    //                  ->where('idPedido', $pedido->idPedido)
+    //                  ->join('productos', 'pedido_detalle.idProducto', '=', 'productos.idProducto')
+    //                  ->select(
+    //                      'pedido_detalle.idDetallePedido',
+    //                      'productos.idProducto',
+    //                      'productos.nombreProducto',
+    //                      'pedido_detalle.cantidad',
+    //                      'pedido_detalle.precioUnitario',
+    //                      'pedido_detalle.subtotal'
+    //                  )
+    //                  ->get();
  
-                 // Agregar los detalles al pedido
-                 $pedidosConDetalles[] = [
-                     'idPedido' => $pedido->idPedido,
-                     'idUsuario' => $pedido->idUsuario,
-                     'total' => $pedido->total,
-                     'estado' => $pedido->estado,
-                     'detalles' => $detalles,
-                 ];
-             }
+    //              // Agregar los detalles al pedido
+    //              $pedidosConDetalles[] = [
+    //                  'idPedido' => $pedido->idPedido,
+    //                  'idUsuario' => $pedido->idUsuario,
+    //                  'total' => $pedido->total,
+    //                  'estado' => $pedido->estado,
+    //                  'detalles' => $detalles,
+    //              ];
+    //          }
  
-             return response()->json([
-                 'success' => true,
-                 'pedidos' => $pedidosConDetalles,
-             ], 200);
+    //          return response()->json([
+    //              'success' => true,
+    //              'pedidos' => $pedidosConDetalles,
+    //          ], 200);
  
-         } catch (\Exception $e) {
-             Log::error('Error al listar pedidos: ' . $e->getMessage());
+    //      } catch (\Exception $e) {
+    //          Log::error('Error al listar pedidos: ' . $e->getMessage());
  
-             return response()->json([
-                 'success' => false,
-                 'message' => 'Error al obtener los pedidos.',
-                 'error' => $e->getMessage(),
-             ], 500);
-         }
-     }
+    //          return response()->json([
+    //              'success' => false,
+    //              'message' => 'Error al obtener los pedidos.',
+    //              'error' => $e->getMessage(),
+    //          ], 500);
+    //      }
+    //  }
+
+    public function listarPedidos($idUsuario)
+    {
+        try {
+            // Verificar que el idUsuario existe en la tabla 'usuarios'
+            $usuarioExiste = DB::table('usuarios')->where('idUsuario', $idUsuario)->exists();
+            if (!$usuarioExiste) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado.',
+                ], 404);
+            }
+    
+            // Obtener los pedidos del usuario, ordenados por 'idPedido' descendente
+            $pedidos = DB::table('pedidos')
+                ->where('idUsuario', $idUsuario)
+                ->orderBy('idPedido', 'desc') // Ordenar por idPedido descendente
+                ->get();
+    
+            // Para cada pedido, obtener los detalles (productos) y la dirección
+            $pedidosConDetallesYDireccion = [];
+    
+            foreach ($pedidos as $pedido) {
+                // Obtener los detalles del pedido desde 'pedido_detalle' y 'productos'
+                $detalles = DB::table('pedido_detalle')
+                    ->where('idPedido', $pedido->idPedido)
+                    ->join('productos', 'pedido_detalle.idProducto', '=', 'productos.idProducto')
+                    ->select(
+                        'pedido_detalle.idDetallePedido',
+                        'productos.idProducto',
+                        'productos.nombreProducto',
+                        'pedido_detalle.cantidad',
+                        'pedido_detalle.precioUnitario',
+                        'pedido_detalle.subtotal'
+                    )
+                    ->get();
+    
+                // Obtener la dirección del pedido (corregido el join)
+                $direccion = DB::table('detalle_direccion_pedido')
+                    ->where('idPedido', $pedido->idPedido)
+                    ->join('detalle_direcciones', 'detalle_direccion_pedido.idDireccion', '=', 'detalle_direcciones.idDireccion') // Relación corregida aquí
+                    ->select('detalle_direcciones.region', 'detalle_direcciones.provincia', 'detalle_direcciones.direccion')
+                    ->first();
+    
+                // Agregar los detalles y la dirección al pedido
+                $pedidosConDetallesYDireccion[] = [
+                    'idPedido' => $pedido->idPedido,
+                    'idUsuario' => $pedido->idUsuario,
+                    'total' => $pedido->total,
+                    'estado' => $pedido->estado,
+                    'detalles' => $detalles,
+                    'direccion' => $direccion, // Dirección agregada
+                ];
+            }
+    
+            return response()->json([
+                'success' => true,
+                'pedidos' => $pedidosConDetallesYDireccion,
+            ], 200);
+    
+        } catch (\Exception $e) {
+            Log::error('Error al listar pedidos: ' . $e->getMessage());
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los pedidos.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
 
      public function procesarPago(Request $request, $idPedido)
@@ -653,10 +697,12 @@ class ClienteController extends Controller
             return response()->json(['error' => 'Error interno al listar direcciones'], 500);
         }
     }
-
     public function agregarDireccion(Request $request)
     {
         try {
+            // Log para verificar el contenido de la solicitud
+            Log::info('Datos recibidos:', $request->all());  // Esto te ayudará a ver si el idUsuario está presente
+    
             // Validar los datos recibidos
             $request->validate([
                 'idUsuario' => 'required|integer|exists:usuarios,idUsuario',
