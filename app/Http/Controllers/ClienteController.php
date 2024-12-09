@@ -359,99 +359,111 @@ class ClienteController extends Controller
 
 
      public function crearPedido(Request $request)
-    {
-        DB::beginTransaction();
-
-        try {
-            $request->validate([
-                'idUsuario' => 'required|integer',
-                'idCarrito' => 'required|integer',
-                'total' => 'required|numeric',
-                'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion',
-            ]);
-
-            $idUsuario = $request->input('idUsuario');
-            $idCarrito = $request->input('idCarrito');
-            $total = $request->input('total');
-            $idDireccion = $request->input('idDireccion');
-            $estadoPedido = 'pendiente';
-
-            // Crear el pedido
-            $pedidoId = DB::table('pedidos')->insertGetId([
-                'idUsuario' => $idUsuario,
-                'total' => $total,
-                'estado' => $estadoPedido,
-            ]);
-
-            DB::table('detalle_direccion_pedido')->insert([
-                'idPedido' => $pedidoId,
-                'idDireccion' => $idDireccion,
-            ]);
-
-            $detallesCarrito = DB::table('carrito_detalle')
-                ->where('idCarrito', $idCarrito)
-                ->get();
-
-            if ($detallesCarrito->isEmpty()) {
-                throw new \Exception('El carrito está vacío.');
-            }
-
-            $productos = [];
-            foreach ($detallesCarrito as $detalle) {
-                $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
-                if (!$producto || $producto->stock < $detalle->cantidad) {
-                    throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}.");
-                }
-
-                $subtotal = $detalle->cantidad * $detalle->precio;
-                DB::table('pedido_detalle')->insert([
-                    'idPedido' => $pedidoId,
-                    'idProducto' => $detalle->idProducto,
-                    'cantidad' => $detalle->cantidad,
-                    'precioUnitario' => $detalle->precio,
-                    'subtotal' => $subtotal,
-                ]);
-
-                $productos[] = (object) [
-                    'nombreProducto' => $producto->nombreProducto,
-                    'cantidad' => $detalle->cantidad,
-                    'precioUnitario' => $detalle->precio,
-                    'subtotal' => $subtotal,
-                ];
-            }
-
-            // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
-            DB::table('pagos')->insert([
-                'idPedido' => $pedidoId,
-                'monto' => $total,
-                'estado_pago' => 'pendiente', // El pago aún no está completado
-            ]);
-
-            DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
-
-            DB::commit();
-
-            // Enviar el correo de confirmación al usuario
-            $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
-            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pedido creado exitosamente.',
-                'idPedido' => $pedidoId,
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al crear pedido y pago: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear el pedido.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-        
+     {
+         DB::beginTransaction();
+     
+         try {
+             // Validación de los datos de entrada
+             $request->validate([
+                 'idUsuario' => 'required|integer',
+                 'idCarrito' => 'required|integer',
+                 'total' => 'required|numeric',
+                 'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion',
+             ]);
+     
+             // Extraemos los datos del request
+             $idUsuario = $request->input('idUsuario');
+             $idCarrito = $request->input('idCarrito');
+             $total = $request->input('total');
+             $idDireccion = $request->input('idDireccion');
+             $estadoPedido = 'pendiente';
+     
+             // Crear el pedido
+             $pedidoId = DB::table('pedidos')->insertGetId([
+                 'idUsuario' => $idUsuario,
+                 'total' => $total,
+                 'estado' => $estadoPedido,
+             ]);
+     
+             // Insertar la dirección en la tabla de detalle_direccion_pedido
+             DB::table('detalle_direccion_pedido')->insert([
+                 'idPedido' => $pedidoId,
+                 'idDireccion' => $idDireccion,
+             ]);
+     
+             // Obtener los detalles del carrito
+             $detallesCarrito = DB::table('carrito_detalle')
+                 ->where('idCarrito', $idCarrito)
+                 ->get();
+     
+             if ($detallesCarrito->isEmpty()) {
+                 throw new \Exception('El carrito está vacío.');
+             }
+     
+             $productos = [];
+             foreach ($detallesCarrito as $detalle) {
+                 // Obtener el producto con el precio correcto desde la tabla productos
+                 $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
+                 if (!$producto || $producto->stock < $detalle->cantidad) {
+                     throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}.");
+                 }
+     
+                 // Obtener el precio unitario del producto y calcular el subtotal
+                 $precioUnitario = $producto->precio;
+                 $subtotal = $detalle->cantidad * $precioUnitario;
+     
+                 // Insertar en la tabla detalle_pedido
+                 DB::table('pedido_detalle')->insert([
+                     'idPedido' => $pedidoId,
+                     'idProducto' => $detalle->idProducto,
+                     'cantidad' => $detalle->cantidad,
+                     'precioUnitario' => $precioUnitario,  // Utilizamos el precio correcto
+                     'subtotal' => $subtotal,
+                 ]);
+     
+                 $productos[] = (object) [
+                     'nombreProducto' => $producto->nombreProducto,
+                     'cantidad' => $detalle->cantidad,
+                     'precioUnitario' => $precioUnitario,
+                     'subtotal' => $subtotal,
+                 ];
+             }
+     
+             // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
+             DB::table('pagos')->insert([
+                 'idPedido' => $pedidoId,
+                 'monto' => $total,
+                 'estado_pago' => 'pendiente', // El pago aún no está completado
+             ]);
+     
+             // Limpiar el carrito de detalles (vaciar el carrito)
+             DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
+     
+             // Confirmamos la transacción
+             DB::commit();
+     
+             // Enviar el correo de confirmación al usuario
+             $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
+             Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
+     
+             // Respuesta exitosa
+             return response()->json([
+                 'success' => true,
+                 'message' => 'Pedido creado exitosamente.',
+                 'idPedido' => $pedidoId,
+             ], 201);
+     
+         } catch (\Exception $e) {
+             // Si hay un error, revertimos la transacción
+             DB::rollBack();
+             Log::error('Error al crear pedido y pago: ' . $e->getMessage());
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Error al crear el pedido.',
+                 'error' => $e->getMessage(),
+             ], 500);
+         }
+     }
 
     //  public function listarPedidos($idUsuario)
     //  {

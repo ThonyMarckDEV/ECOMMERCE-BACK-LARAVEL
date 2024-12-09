@@ -21,7 +21,6 @@ class Producto extends Model
         'descripcion',
         'precio',
         'stock',
-        'imagen',
         'idCategoria', // Clave foránea hacia la tabla categorias
     ];
 
@@ -39,6 +38,19 @@ class Producto extends Model
     public function pedidos()
     {
         return $this->hasMany(PedidoDetalle::class, 'idProducto', 'idProducto');
+    }
+
+
+    public function stocks()
+    {
+        return $this->hasManyThrough(
+            Stock::class, 
+            Modelo::class,
+            'idProducto', // Clave foránea de Producto en Modelo
+            'idModelo',   // Clave foránea de Modelo en Stock
+            'idProducto', // Clave primaria de Producto
+            'idModelo'    // Clave primaria de Modelo
+        );
     }
 
 }

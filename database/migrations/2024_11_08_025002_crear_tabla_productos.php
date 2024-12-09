@@ -15,8 +15,6 @@ class CrearTablaProductos extends Migration
             $table->string('nombreProducto');
             $table->string('descripcion', 60)->nullable();
             $table->decimal('precio', 8, 2);
-            $table->integer('stock');
-            $table->string('imagen')->nullable();
 
             // Clave foránea
             $table->unsignedBigInteger('idCategoria');
