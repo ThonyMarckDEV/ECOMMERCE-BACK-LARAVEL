@@ -364,60 +364,61 @@ class ClienteController extends Controller
         }
     }
 
-    public function listarCarrito()
-{
-    try {
-        $userId = Auth::id();
+    public function listarCarrito(Request $request)
+    {
+        try {
+            // Obtener el idUsuario desde el cuerpo de la solicitud
+            $userId = $request->input('idUsuario');
 
-        // Obtener los detalles del carrito del usuario autenticado
-        $carritoDetalles = CarritoDetalle::with('producto', 'modelo', 'modelo.tallas') // Cargar las tallas relacionadas correctamente
-            ->whereHas('carrito', function($query) use ($userId) {
-                $query->where('idUsuario', $userId);
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'El idUsuario es obligatorio'], 400);
+            }
+
+            $productos = DB::table('carrito_detalle as cd')
+            ->join('carrito as c', 'cd.idCarrito', '=', 'c.idCarrito')
+            ->join('productos as p', 'cd.idProducto', '=', 'p.idProducto')
+            ->join('modelos as m', 'cd.idModelo', '=', 'm.idModelo')
+            ->leftJoin('tallas as t', 'cd.idTalla', '=', 't.idTalla')
+            ->leftJoin('stock as s', function ($join) {
+                $join->on('s.idModelo', '=', 'm.idModelo')
+                     ->on('s.idTalla', '=', 'cd.idTalla');
             })
+            ->leftJoin('imagenes_modelo as im', 'm.idModelo', '=', 'im.idModelo')
+            ->select(
+                DB::raw('CONCAT(p.idProducto, "-", IFNULL(t.nombreTalla, ""), "-", IFNULL(m.nombreModelo, "")) as idDetalle'),
+                'p.idProducto',
+                'p.nombreProducto',
+                'p.descripcion',
+                'cd.cantidad', // Usamos la cantidad directamente de la tabla carrito_detalle
+                'p.precio', // Solo listamos el precio de carrito_detalle
+                DB::raw('IFNULL(MAX(s.cantidad), 0) as stock'), // Obtenemos el stock disponible
+                DB::raw('MAX(im.urlImagen) as urlImagen'), // Obtenemos la URL de la imagen
+                'p.idCategoria',
+                't.nombreTalla',
+                'm.nombreModelo',
+                'cd.subtotal' // Listamos directamente el campo subtotal desde carrito_detalle
+            )
+            ->where('c.idUsuario', '=', $userId)
+            ->groupBy(
+                'p.idProducto',
+                'p.nombreProducto',
+                'p.descripcion',
+                'p.precio',  // Aseguramos que precio esté en el GROUP BY
+                'cd.subtotal', // Agregamos subtotal
+                'cd.cantidad',
+                'p.idCategoria',
+                't.nombreTalla',
+                'm.nombreModelo'
+            )
+            ->orderBy('p.idProducto')
             ->get();
 
-        $productos = $carritoDetalles->map(function($detalle) {
-            // Obtener el idProducto desde el modelo relacionado
-            $productoId = $detalle->modelo->idProducto;
-
-            // Obtener el stock desde la tabla 'stock' filtrado por idModelo y idTalla
-            $stock = Stock::where('idModelo', $detalle->modelo->idModelo) // Relacionamos con idModelo
-                ->where('idTalla', $detalle->idTalla)  // Relacionamos con idTalla
-                ->first();
-
-            // Si no se encuentra el stock, lo configuramos a 0
-            $stockCantidad = $stock ? $stock->cantidad : 0;
-
-            // Obtener la primera imagen del modelo desde 'imagenes_modelo'
-            $imagenModelo = ImagenModelo::where('idModelo', $detalle->modelo->idModelo)
-                                        ->orderBy('idImagen', 'asc') // Aseguramos de obtener la primera imagen
-                                        ->first();
-
-            // Obtener nombre de la talla desde la relación
-            $nombreTalla = $detalle->modelo->tallas->first() ? $detalle->modelo->tallas->first()->nombreTalla : 'Talla no disponible';
-            $nombreModelo = $detalle->modelo ? $detalle->modelo->nombreModelo : 'Modelo no disponible';
-
-            return [
-                'idProducto' => $productoId,
-                'nombreProducto' => $detalle->producto->nombreProducto,
-                'descripcion' => $detalle->producto->descripcion,
-                'cantidad' => $detalle->cantidad,
-                'precio' => (float) $detalle->producto->precio,
-                'subtotal' => (float) ($detalle->producto->precio * $detalle->cantidad),
-                'stock' => (int) $stockCantidad,
-                'imagen' => $imagenModelo ? $imagenModelo->urlImagen : '',
-                'idCategoria' => $detalle->producto->idCategoria,
-                'nombreTalla' => $nombreTalla,
-                'nombreModelo' => $nombreModelo,
-            ];
-        });
-
-        return response()->json(['success' => true, 'data' => $productos], 200);
-    } catch (\Exception $e) {
-        Log::error('Error al obtener el carrito: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
+            return response()->json(['success' => true, 'data' => $productos], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener el carrito: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
+        }
     }
-}
 
     
     public function actualizarCantidad(Request $request, $idProducto)
