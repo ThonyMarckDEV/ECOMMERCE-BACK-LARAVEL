@@ -15,7 +15,7 @@ class CrearTablaDetalleCarrito extends Migration
             $table->unsignedBigInteger('idModelo'); // Agregar idModelo
             $table->unsignedBigInteger('idTalla'); // Agregar idTalla
             $table->integer('cantidad');
-            $table->decimal('precio', 10, 2); // Define el tipo de campo para el precio con precisión decimal
+            $table->decimal('subtotal', 10, 2)->default(0); // Define el tipo de campo para el precio con precisión decimal
             
             // Claves foráneas
             $table->foreign('idCarrito')

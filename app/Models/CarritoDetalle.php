@@ -16,7 +16,7 @@ class CarritoDetalle extends Model
     public $timestamps = false;
 
     // Permitir asignación masiva para estos campos
-    protected $fillable = ['idCarrito', 'idProducto', 'idModelo', 'idTalla', 'cantidad', 'precio'];
+    protected $fillable = ['idCarrito', 'idProducto', 'idModelo', 'idTalla', 'cantidad', 'subtotal'];
     
     public function carrito()
     {

@@ -270,7 +270,7 @@ class ClienteController extends Controller
                     'message' => 'Producto no encontrado',
                 ], 404);
             }
-
+    
             // Obtener el stock disponible del modelo y talla seleccionados
             $stock = Stock::where('idModelo', $validatedData['idModelo'])
                             ->where('idTalla', $validatedData['idTalla'])
@@ -283,10 +283,29 @@ class ClienteController extends Controller
                     'message' => 'La cantidad solicitada excede el stock disponible',
                 ], 400);
             }
-
+            
             // Obtener el precio del producto
             $precio = $producto->precio;
             
+            // Verificar que el precio es un número válido
+            if (!is_numeric($precio) || $precio <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Precio inválido del producto',
+                ], 400);
+            }
+    
+            // Calcular el subtotal en el backend
+            $subtotal = $precio * $validatedData['cantidad'];
+    
+            // Verificar que el subtotal sea un número válido
+            if (!is_numeric($subtotal) || $subtotal <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El precio calculado es inválido',
+                ], 400);
+            }
+    
             // Obtener el carrito del usuario (si no existe, lo crea)
             $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
             
@@ -309,14 +328,14 @@ class ClienteController extends Controller
                         'message' => 'La cantidad total en el carrito supera el stock disponible',
                     ], 400);
                 }
-
+    
                 // Actualizar la cantidad y recalcular el precio total
-                $nuevoPrecio = $precio * $nuevaCantidad;
-
+                $nuevoSubtotal = $precio * $nuevaCantidad;
+    
                 // Actualizar el detalle del carrito
                 $carritoDetalle->update([
                     'cantidad' => $nuevaCantidad,
-                    'precio' => $nuevoPrecio
+                    'subtotal' => $nuevoSubtotal
                 ]);
             } else {
                 // Si el producto no está en el carrito, lo agregamos
@@ -327,19 +346,18 @@ class ClienteController extends Controller
                         'message' => 'La cantidad solicitada excede el stock disponible',
                     ], 400);
                 }
-
-                // Crear un nuevo detalle en el carrito
-                $nuevoPrecio = $precio * $validatedData['cantidad'];
+    
+                // Si el producto no está en el carrito, lo agregamos
                 CarritoDetalle::create([
                     'idCarrito' => $carrito->idCarrito,
                     'idProducto' => $validatedData['idProducto'],
                     'idModelo' => $validatedData['idModelo'],
                     'idTalla' => $validatedData['idTalla'],
                     'cantidad' => $validatedData['cantidad'],
-                    'precio' => $nuevoPrecio
+                    'subtotal' => $subtotal,  // Aseguramos de incluir el subtotal
                 ]);
             }
-
+    
             return response()->json([
                 'success' => true,
                 'message' => 'Producto agregado al carrito con éxito',
