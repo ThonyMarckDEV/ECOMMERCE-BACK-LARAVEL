@@ -12,6 +12,8 @@ class CrearTablaDetalleCarrito extends Migration
             $table->id('idDetalle');
             $table->unsignedBigInteger('idCarrito'); // Mismo tipo que en la tabla `carrito`
             $table->unsignedBigInteger('idProducto'); // Mismo tipo que en la tabla `productos`
+            $table->unsignedBigInteger('idModelo'); // Agregar idModelo
+            $table->unsignedBigInteger('idTalla'); // Agregar idTalla
             $table->integer('cantidad');
             $table->decimal('precio', 10, 2); // Define el tipo de campo para el precio con precisión decimal
             
@@ -25,6 +27,18 @@ class CrearTablaDetalleCarrito extends Migration
                 ->references('idProducto')
                 ->on('productos')
                 ->onDelete('cascade'); // Activar cascada en eliminación
+
+            // Relación con Modelo (si la tabla modelos existe)
+            $table->foreign('idModelo')
+                ->references('idModelo')
+                ->on('modelos') // Cambia 'modelos' por el nombre correcto de la tabla de modelos
+                ->onDelete('cascade');
+
+            // Relación con Talla (si la tabla tallas existe)
+            $table->foreign('idTalla')
+                ->references('idTalla')
+                ->on('tallas') // Cambia 'tallas' por el nombre correcto de la tabla de tallas
+                ->onDelete('cascade');
         });
     }
 

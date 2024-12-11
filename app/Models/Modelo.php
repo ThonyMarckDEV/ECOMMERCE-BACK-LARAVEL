@@ -33,4 +33,10 @@ class Modelo extends Model
     {
         return $this->hasMany(ImagenModelo::class, 'idModelo', 'idModelo');
     }
+
+   // Relación con el stock
+   public function stock()
+   {
+       return $this->hasMany(Stock::class, 'idModelo', 'idModelo');
+   }
 }

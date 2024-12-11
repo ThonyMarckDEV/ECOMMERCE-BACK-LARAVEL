@@ -7,6 +7,8 @@ use App\Models\Carrito;
 use App\Models\CarritoDetalle;
 use Illuminate\Http\Request;
 use App\Models\Producto;
+use App\Models\Stock;
+use App\Models\Modelo;
 use App\Models\Pedido;
 use App\Models\DetalleDireccion;
 use Illuminate\Support\Facades\Auth;
@@ -114,6 +116,7 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'message' => 'Datos actualizados correctamente']);
     }
 
+
     public function listarProductos(Request $request)
     {
         // Obtener los parámetros de la solicitud
@@ -122,145 +125,317 @@ class ClienteController extends Controller
         $idProducto = $request->input('idProducto');
         $precioInicial = $request->input('precioInicial');
         $precioFinal = $request->input('precioFinal');
-    
-        // Construir la consulta para obtener los productos
-        $query = Producto::with('categoria:idCategoria,nombreCategoria');
-    
+        
+        // Construir la consulta para obtener los productos con relaciones
+        $query = Producto::with([
+            'categoria:idCategoria,nombreCategoria',
+            'modelos' => function($query) {
+                $query->with([
+                    'imagenes:idImagen,urlImagen,idModelo',
+                    'stock' => function($query) {
+                        $query->with('talla:idTalla,nombreTalla');
+                    }
+                ]);
+            }
+        ]);
+        
         // Filtrar por idProducto si el parámetro 'idProducto' existe
         if ($idProducto) {
             $query->where('idProducto', $idProducto);
         }
-    
+        
         // Filtrar por categoría si el parámetro 'categoria' existe
         if ($categoriaId) {
             $query->where('idCategoria', $categoriaId);
         }
-    
+        
         // Filtrar por texto en el nombre del producto si el parámetro 'texto' existe
         if ($texto) {
             $query->where('nombreProducto', 'like', '%' . $texto . '%');
         }
-    
+        
         // Filtrar por rango de precios si se proporcionan
         if ($precioInicial !== null && $precioFinal !== null) {
             $query->whereBetween('precio', [$precioInicial, $precioFinal]);
         }
-    
+        
         // Obtener los productos
         $productos = $query->get();
-    
+        
         // Si se pasó un 'idProducto', se devuelve un solo producto
         if ($idProducto) {
             $producto = $productos->first();
-    
+        
             if ($producto) {
-                $producto = [
+                $productoData = [
                     'idProducto' => $producto->idProducto,
                     'nombreProducto' => $producto->nombreProducto,
                     'descripcion' => $producto->descripcion,
                     'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
                     'precio' => $producto->precio,
-                    'stock' => $producto->stock,
-                    'imagen' => $producto->imagen,
+                    'modelos' => $producto->modelos->map(function($modelo) {
+                        return [
+                            'idModelo' => $modelo->idModelo, // Agregar idModelo
+                            'nombreModelo' => $modelo->nombreModelo,
+                            'imagenes' => $modelo->imagenes->map(function($imagen) {
+                                return [
+                                    'urlImagen' => $imagen->urlImagen
+                                ];
+                            }),
+                            'tallas' => $modelo->stock->map(function($stock) {
+                                return [
+                                    'idTalla' => $stock->talla->idTalla, // Agregar idTalla
+                                    'nombreTalla' => $stock->talla->nombreTalla,
+                                    'cantidad' => $stock->cantidad
+                                ];
+                            })
+                        ];
+                    })
                 ];
-    
-                return response()->json(['data' => $producto], 200);
+        
+                return response()->json(['data' => $productoData], 200);
             } else {
                 return response()->json(['message' => 'Producto no encontrado'], 404);
             }
         }
-    
+        
         // Si no se pasa un 'idProducto', se devuelve la lista de productos filtrados
-        $productos = $productos->map(function($producto) {
+        $productosData = $productos->map(function($producto) {
             return [
                 'idProducto' => $producto->idProducto,
                 'nombreProducto' => $producto->nombreProducto,
                 'descripcion' => $producto->descripcion,
                 'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
                 'precio' => $producto->precio,
-                'stock' => $producto->stock,
-                'imagen' => $producto->imagen,
+                'modelos' => $producto->modelos->map(function($modelo) {
+                    return [
+                        'idModelo' => $modelo->idModelo, // Agregar idModelo
+                        'nombreModelo' => $modelo->nombreModelo,
+                        'imagenes' => $modelo->imagenes->map(function($imagen) {
+                            return [
+                                'urlImagen' => $imagen->urlImagen
+                            ];
+                        }),
+                        'tallas' => $modelo->stock->map(function($stock) {
+                            return [
+                                'idTalla' => $stock->talla->idTalla, // Agregar idTalla
+                                'nombreTalla' => $stock->talla->nombreTalla,
+                                'cantidad' => $stock->cantidad
+                            ];
+                        })
+                    ];
+                })
             ];
         });
-    
-        return response()->json(['data' => $productos], 200);
+        
+        return response()->json(['data' => $productosData], 200);
     }
 
+    // public function agregarAlCarrito(Request $request)
+    // {
+    //     $validatedData = $request->validate([
+    //         'idProducto' => 'required|exists:productos,idProducto',
+    //         'cantidad' => 'required|integer|min:1',
+    //         'idUsuario' => 'required|exists:usuarios,idUsuario'
+    //     ]);
+    
+    //     try {
+    //         // Obtener el producto y verificar el stock
+    //         $producto = Producto::find($validatedData['idProducto']);
+    //         $cantidadAgregar = $validatedData['cantidad'];
+    
+    //         // Obtener el carrito del usuario
+    //         $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
+    
+    //         // Verificar si el producto ya está en el carrito
+    //         $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
+    //                                         ->where('idProducto', $validatedData['idProducto'])
+    //                                         ->first();
+    
+    //         // Si el producto ya está en el carrito
+    //         if ($carritoDetalle) {
+    //             // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
+    //             $nuevaCantidad = $carritoDetalle->cantidad + $cantidadAgregar;
+    
+    //             // Verificar si la cantidad total excede el stock disponible
+    //             if ($nuevaCantidad > $producto->stock) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'La cantidad total en el carrito supera el stock disponible',
+    //                 ], 400);
+    //             }
+    
+    //             // Actualizar la cantidad y recalcular el precio total
+    //             $nuevoPrecio = $producto->precio * $nuevaCantidad;
+    
+    //             // Actualizar el detalle del carrito
+    //             $carritoDetalle->update([
+    //                 'cantidad' => $nuevaCantidad,
+    //                 'precio' => $nuevoPrecio
+    //             ]);
+    //         } else {
+    //             // Si el producto no está en el carrito, lo agregamos
+    //             // Verificar si la cantidad no supera el stock disponible
+    //             if ($cantidadAgregar > $producto->stock) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'La cantidad solicitada excede el stock disponible',
+    //                 ], 400);
+    //             }
+    
+    //             // Crear un nuevo detalle en el carrito
+    //             $nuevoPrecio = $producto->precio * $cantidadAgregar;
+    //             CarritoDetalle::create([
+    //                 'idCarrito' => $carrito->idCarrito,
+    //                 'idProducto' => $validatedData['idProducto'],
+    //                 'cantidad' => $cantidadAgregar,
+    //                 'precio' => $nuevoPrecio
+    //             ]);
+    //         }
+    
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Producto agregado al carrito con éxito',
+    //         ], 201);
+    
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error al agregar al carrito',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function agregarAlCarrito(Request $request)
-    {
-        $validatedData = $request->validate([
-            'idProducto' => 'required|exists:productos,idProducto',
-            'cantidad' => 'required|integer|min:1',
-            'idUsuario' => 'required|exists:usuarios,idUsuario'
-        ]);
+{
+    // Validación de los datos recibidos
+    $validatedData = $request->validate([
+        'idProducto' => 'required|exists:productos,idProducto',
+        'cantidad' => 'required|integer|min:1',
+        'idUsuario' => 'required|exists:usuarios,idUsuario',
+        'idModelo' => 'required|exists:modelos,idModelo',
+        'idTalla' => 'required|exists:tallas,idTalla',
+    ]);
     
-        try {
-            // Obtener el producto y verificar el stock
-            $producto = Producto::find($validatedData['idProducto']);
-            $cantidadAgregar = $validatedData['cantidad'];
+    // Registro en el log para ver los datos recibidos
+    Log::info('Datos recibidos:', $request->all());
     
-            // Obtener el carrito del usuario
-            $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
-    
-            // Verificar si el producto ya está en el carrito
-            $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
-                                            ->where('idProducto', $validatedData['idProducto'])
-                                            ->first();
-    
-            // Si el producto ya está en el carrito
-            if ($carritoDetalle) {
-                // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
-                $nuevaCantidad = $carritoDetalle->cantidad + $cantidadAgregar;
-    
-                // Verificar si la cantidad total excede el stock disponible
-                if ($nuevaCantidad > $producto->stock) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'La cantidad total en el carrito supera el stock disponible',
-                    ], 400);
-                }
-    
-                // Actualizar la cantidad y recalcular el precio total
-                $nuevoPrecio = $producto->precio * $nuevaCantidad;
-    
-                // Actualizar el detalle del carrito
-                $carritoDetalle->update([
-                    'cantidad' => $nuevaCantidad,
-                    'precio' => $nuevoPrecio
-                ]);
-            } else {
-                // Si el producto no está en el carrito, lo agregamos
-                // Verificar si la cantidad no supera el stock disponible
-                if ($cantidadAgregar > $producto->stock) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'La cantidad solicitada excede el stock disponible',
-                    ], 400);
-                }
-    
-                // Crear un nuevo detalle en el carrito
-                $nuevoPrecio = $producto->precio * $cantidadAgregar;
-                CarritoDetalle::create([
-                    'idCarrito' => $carrito->idCarrito,
-                    'idProducto' => $validatedData['idProducto'],
-                    'cantidad' => $cantidadAgregar,
-                    'precio' => $nuevoPrecio
-                ]);
-            }
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'Producto agregado al carrito con éxito',
-            ], 201);
-    
-        } catch (\Exception $e) {
+    try {
+        // Obtener el producto desde la relación en la tabla modelo
+        $modelo = Modelo::find($validatedData['idModelo']);
+        
+        // Verificar si el modelo existe
+        if (!$modelo) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al agregar al carrito',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Modelo no encontrado',
+            ], 404);
         }
+        
+        // Obtener el producto relacionado al modelo
+        $producto = Producto::find($modelo->idProducto);
+        
+        // Verificar si el producto existe
+        if (!$producto) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Producto no encontrado',
+            ], 404);
+        }
+
+        // Obtener el stock disponible del modelo y talla seleccionados
+        $stock = Stock::where('idModelo', $validatedData['idModelo'])
+                      ->where('idTalla', $validatedData['idTalla'])
+                      ->first();
+        
+        // Verificar si hay stock disponible
+        if (!$stock || $stock->cantidad < $validatedData['cantidad']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cantidad solicitada excede el stock disponible',
+            ], 400);
+        }
+
+        // Obtener el precio del producto
+        $precio = $producto->precio;
+        
+        // Obtener el carrito del usuario (si no existe, lo crea)
+        $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
+        
+        // Verificar si el producto ya está en el carrito para el modelo y talla específicos
+        $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
+                                        ->where('idProducto', $validatedData['idProducto'])
+                                        ->where('idModelo', $validatedData['idModelo'])
+                                        ->where('idTalla', $validatedData['idTalla'])
+                                        ->first();
+        
+        // Si el producto ya está en el carrito
+        if ($carritoDetalle) {
+            // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
+            $nuevaCantidad = $carritoDetalle->cantidad + $validatedData['cantidad'];
+            
+            // Verificar si la cantidad total excede el stock disponible
+            if ($nuevaCantidad > $stock->cantidad) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La cantidad total en el carrito supera el stock disponible',
+                ], 400);
+            }
+
+            // Actualizar la cantidad y recalcular el precio total
+            $nuevoPrecio = $precio * $nuevaCantidad;
+
+            // Actualizar el detalle del carrito
+            $carritoDetalle->update([
+                'cantidad' => $nuevaCantidad,
+                'precio' => $nuevoPrecio
+            ]);
+        } else {
+            // Si el producto no está en el carrito, lo agregamos
+            // Verificar si la cantidad no supera el stock disponible
+            if ($validatedData['cantidad'] > $stock->cantidad) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La cantidad solicitada excede el stock disponible',
+                ], 400);
+            }
+
+            // Crear un nuevo detalle en el carrito
+            $nuevoPrecio = $precio * $validatedData['cantidad'];
+            CarritoDetalle::create([
+                'idCarrito' => $carrito->idCarrito,
+                'idProducto' => $validatedData['idProducto'],
+                'idModelo' => $validatedData['idModelo'],
+                'idTalla' => $validatedData['idTalla'],
+                'cantidad' => $validatedData['cantidad'],
+                'precio' => $nuevoPrecio
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Producto agregado al carrito con éxito',
+        ], 201);
+    
+    } catch (\Illuminate\Database\QueryException $e) {
+        // Log de error en base de datos
+        Log::error('Error en la base de datos: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error en la base de datos',
+            'error' => $e->getMessage()
+        ], 500);
+    } catch (\Exception $e) {
+        // Log de error inesperado
+        Log::error('Error inesperado al agregar al carrito: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al agregar al carrito',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function listarCarrito()
     {

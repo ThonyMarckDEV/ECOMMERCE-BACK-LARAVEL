@@ -1,6 +1,5 @@
 <?php
 
-// app/Models/CarritoDetalle.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +16,7 @@ class CarritoDetalle extends Model
     public $timestamps = false;
 
     // Permitir asignación masiva para estos campos
-    protected $fillable = ['idCarrito', 'idProducto', 'cantidad', 'precio'];
+    protected $fillable = ['idCarrito', 'idProducto', 'idModelo', 'idTalla', 'cantidad', 'precio'];
     
     public function carrito()
     {
@@ -29,5 +28,14 @@ class CarritoDetalle extends Model
         return $this->belongsTo(Producto::class, 'idProducto', 'idProducto');
     }
 
+    // Relación con Modelo (si existe)
+    public function modelo()
+    {
+        return $this->belongsTo(Modelo::class, 'idModelo', 'idModelo');  // Verifica que el segundo parámetro sea 'idModelo'
+    }
     
+    public function talla()
+    {
+        return $this->belongsTo(Talla::class, 'idTalla', 'idTalla');  // Asegúrate de que el segundo parámetro esté bien configurado
+    }
 }

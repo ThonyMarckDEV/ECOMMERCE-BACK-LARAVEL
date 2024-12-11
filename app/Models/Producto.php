@@ -40,6 +40,12 @@ class Producto extends Model
         return $this->hasMany(PedidoDetalle::class, 'idProducto', 'idProducto');
     }
 
+     // Relación de uno a muchos con Modelos
+     public function modelos()
+     {
+         return $this->hasMany(Modelo::class, 'idProducto', 'idProducto');
+     }
+
 
     public function stocks()
     {

@@ -40,6 +40,9 @@ use App\Http\Controllers\AuthController;
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
+
+
+        Route::post('agregarCarrito', [ClienteController::class, 'agregarAlCarrito']);
 //================================================================================================
 
 
@@ -100,7 +103,7 @@ use App\Http\Controllers\AuthController;
         
 
         // Ruta para agregar un producto al carrito
-        Route::post('agregarCarrito', [ClienteController::class, 'agregarAlCarrito']);
+        
         Route::get('carrito', [ClienteController::class, 'listarCarrito']); // Listar productos en el carrito
         Route::put('carrito_detalle/{idProducto}', [ClienteController::class, 'actualizarCantidad']); // Actualizar cantidad de producto
         Route::delete('carrito_detalle/{idProducto}', [ClienteController::class, 'eliminarProducto']); // Eliminar producto del carrito
