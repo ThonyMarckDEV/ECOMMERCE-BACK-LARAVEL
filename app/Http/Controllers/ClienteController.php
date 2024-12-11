@@ -403,7 +403,8 @@ class ClienteController extends Controller
             })
             ->leftJoin('imagenes_modelo as im', 'm.idModelo', '=', 'im.idModelo')
             ->select(
-                DB::raw('CONCAT(p.idProducto, "-", IFNULL(t.nombreTalla, ""), "-", IFNULL(m.nombreModelo, "")) as idDetalle'),
+              //  DB::raw('CONCAT(p.idProducto, "-", IFNULL(t.nombreTalla, ""), "-", IFNULL(m.nombreModelo, "")) as idDetalle'),
+                'cd.idDetalle',
                 'p.idProducto',
                 'p.nombreProducto',
                 'p.descripcion',
@@ -418,6 +419,7 @@ class ClienteController extends Controller
             )
             ->where('c.idUsuario', '=', $userId)
             ->groupBy(
+                'cd.idDetalle',
                 'p.idProducto',
                 'p.nombreProducto',
                 'p.descripcion',
@@ -480,28 +482,28 @@ class ClienteController extends Controller
     
         return response()->json(['success' => true, 'message' => 'Cantidad y precio actualizados correctamente'], 200);
     }
- 
-     // Eliminar un producto del carrito
-     public function eliminarProducto($idProducto)
-     {
-         $userId = Auth::id();
- 
-         // Buscar el detalle del carrito que corresponde al producto y usuario autenticado
-         $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($userId) {
-                 $query->where('carrito.idUsuario', $userId); // Cambiar `carrito.id` por `carrito.idUsuario`
-             })
-             ->where('idProducto', $idProducto)
-             ->first();
- 
-         if (!$detalle) {
-             return response()->json(['success' => false, 'message' => 'Producto no encontrado en el carrito'], 404);
-         }
- 
-         // Eliminar el detalle del carrito
-         $detalle->delete();
- 
-         return response()->json(['success' => true, 'message' => 'Producto eliminado del carrito'], 200);
-     }
+    
+    // Eliminar un producto del carrito por idDetalle
+    public function eliminarProducto($idDetalle)
+    {
+        $userId = Auth::id();
+
+        // Buscar el detalle del carrito por idDetalle y usuario autenticado
+        $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($userId) {
+                $query->where('carrito.idUsuario', $userId);
+            })
+            ->where('idDetalle', $idDetalle) // Aquí usamos idDetalle en lugar de idProducto
+            ->first();
+
+        if (!$detalle) {
+            return response()->json(['success' => false, 'message' => 'Detalle no encontrado en el carrito'], 404);
+        }
+
+        // Eliminar el detalle del carrito
+        $detalle->delete();
+
+        return response()->json(['success' => true, 'message' => 'Producto eliminado del carrito'], 200);
+    }
 
 
      public function crearPedido(Request $request)
