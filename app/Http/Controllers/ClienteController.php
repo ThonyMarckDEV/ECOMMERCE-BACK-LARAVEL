@@ -10,6 +10,7 @@ use App\Models\Producto;
 use App\Models\Stock;
 use App\Models\Modelo;
 use App\Models\Pedido;
+use App\Models\ImagenModelo;
 use App\Models\DetalleDireccion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -231,243 +232,194 @@ class ClienteController extends Controller
         return response()->json(['data' => $productosData], 200);
     }
 
-    // public function agregarAlCarrito(Request $request)
-    // {
-    //     $validatedData = $request->validate([
-    //         'idProducto' => 'required|exists:productos,idProducto',
-    //         'cantidad' => 'required|integer|min:1',
-    //         'idUsuario' => 'required|exists:usuarios,idUsuario'
-    //     ]);
-    
-    //     try {
-    //         // Obtener el producto y verificar el stock
-    //         $producto = Producto::find($validatedData['idProducto']);
-    //         $cantidadAgregar = $validatedData['cantidad'];
-    
-    //         // Obtener el carrito del usuario
-    //         $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
-    
-    //         // Verificar si el producto ya está en el carrito
-    //         $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
-    //                                         ->where('idProducto', $validatedData['idProducto'])
-    //                                         ->first();
-    
-    //         // Si el producto ya está en el carrito
-    //         if ($carritoDetalle) {
-    //             // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
-    //             $nuevaCantidad = $carritoDetalle->cantidad + $cantidadAgregar;
-    
-    //             // Verificar si la cantidad total excede el stock disponible
-    //             if ($nuevaCantidad > $producto->stock) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'La cantidad total en el carrito supera el stock disponible',
-    //                 ], 400);
-    //             }
-    
-    //             // Actualizar la cantidad y recalcular el precio total
-    //             $nuevoPrecio = $producto->precio * $nuevaCantidad;
-    
-    //             // Actualizar el detalle del carrito
-    //             $carritoDetalle->update([
-    //                 'cantidad' => $nuevaCantidad,
-    //                 'precio' => $nuevoPrecio
-    //             ]);
-    //         } else {
-    //             // Si el producto no está en el carrito, lo agregamos
-    //             // Verificar si la cantidad no supera el stock disponible
-    //             if ($cantidadAgregar > $producto->stock) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'La cantidad solicitada excede el stock disponible',
-    //                 ], 400);
-    //             }
-    
-    //             // Crear un nuevo detalle en el carrito
-    //             $nuevoPrecio = $producto->precio * $cantidadAgregar;
-    //             CarritoDetalle::create([
-    //                 'idCarrito' => $carrito->idCarrito,
-    //                 'idProducto' => $validatedData['idProducto'],
-    //                 'cantidad' => $cantidadAgregar,
-    //                 'precio' => $nuevoPrecio
-    //             ]);
-    //         }
-    
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Producto agregado al carrito con éxito',
-    //         ], 201);
-    
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error al agregar al carrito',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+  
 
     public function agregarAlCarrito(Request $request)
-{
-    // Validación de los datos recibidos
-    $validatedData = $request->validate([
-        'idProducto' => 'required|exists:productos,idProducto',
-        'cantidad' => 'required|integer|min:1',
-        'idUsuario' => 'required|exists:usuarios,idUsuario',
-        'idModelo' => 'required|exists:modelos,idModelo',
-        'idTalla' => 'required|exists:tallas,idTalla',
-    ]);
-    
-    // Registro en el log para ver los datos recibidos
-    Log::info('Datos recibidos:', $request->all());
-    
-    try {
-        // Obtener el producto desde la relación en la tabla modelo
-        $modelo = Modelo::find($validatedData['idModelo']);
+    {
+        // Validación de los datos recibidos
+        $validatedData = $request->validate([
+            'idProducto' => 'required|exists:productos,idProducto',
+            'cantidad' => 'required|integer|min:1',
+            'idUsuario' => 'required|exists:usuarios,idUsuario',
+            'idModelo' => 'required|exists:modelos,idModelo',
+            'idTalla' => 'required|exists:tallas,idTalla',
+        ]);
         
-        // Verificar si el modelo existe
-        if (!$modelo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Modelo no encontrado',
-            ], 404);
-        }
+        // Registro en el log para ver los datos recibidos
+        Log::info('Datos recibidos:', $request->all());
         
-        // Obtener el producto relacionado al modelo
-        $producto = Producto::find($modelo->idProducto);
-        
-        // Verificar si el producto existe
-        if (!$producto) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Producto no encontrado',
-            ], 404);
-        }
-
-        // Obtener el stock disponible del modelo y talla seleccionados
-        $stock = Stock::where('idModelo', $validatedData['idModelo'])
-                      ->where('idTalla', $validatedData['idTalla'])
-                      ->first();
-        
-        // Verificar si hay stock disponible
-        if (!$stock || $stock->cantidad < $validatedData['cantidad']) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La cantidad solicitada excede el stock disponible',
-            ], 400);
-        }
-
-        // Obtener el precio del producto
-        $precio = $producto->precio;
-        
-        // Obtener el carrito del usuario (si no existe, lo crea)
-        $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
-        
-        // Verificar si el producto ya está en el carrito para el modelo y talla específicos
-        $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
-                                        ->where('idProducto', $validatedData['idProducto'])
-                                        ->where('idModelo', $validatedData['idModelo'])
-                                        ->where('idTalla', $validatedData['idTalla'])
-                                        ->first();
-        
-        // Si el producto ya está en el carrito
-        if ($carritoDetalle) {
-            // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
-            $nuevaCantidad = $carritoDetalle->cantidad + $validatedData['cantidad'];
+        try {
+            // Obtener el producto desde la relación en la tabla modelo
+            $modelo = Modelo::find($validatedData['idModelo']);
             
-            // Verificar si la cantidad total excede el stock disponible
-            if ($nuevaCantidad > $stock->cantidad) {
+            // Verificar si el modelo existe
+            if (!$modelo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La cantidad total en el carrito supera el stock disponible',
-                ], 400);
+                    'message' => 'Modelo no encontrado',
+                ], 404);
+            }
+            
+            // Obtener el producto relacionado al modelo
+            $producto = Producto::find($modelo->idProducto);
+            
+            // Verificar si el producto existe
+            if (!$producto) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Producto no encontrado',
+                ], 404);
             }
 
-            // Actualizar la cantidad y recalcular el precio total
-            $nuevoPrecio = $precio * $nuevaCantidad;
-
-            // Actualizar el detalle del carrito
-            $carritoDetalle->update([
-                'cantidad' => $nuevaCantidad,
-                'precio' => $nuevoPrecio
-            ]);
-        } else {
-            // Si el producto no está en el carrito, lo agregamos
-            // Verificar si la cantidad no supera el stock disponible
-            if ($validatedData['cantidad'] > $stock->cantidad) {
+            // Obtener el stock disponible del modelo y talla seleccionados
+            $stock = Stock::where('idModelo', $validatedData['idModelo'])
+                            ->where('idTalla', $validatedData['idTalla'])
+                            ->first();
+            
+            // Verificar si hay stock disponible
+            if (!$stock || $stock->cantidad < $validatedData['cantidad']) {
                 return response()->json([
                     'success' => false,
                     'message' => 'La cantidad solicitada excede el stock disponible',
                 ], 400);
             }
 
-            // Crear un nuevo detalle en el carrito
-            $nuevoPrecio = $precio * $validatedData['cantidad'];
-            CarritoDetalle::create([
-                'idCarrito' => $carrito->idCarrito,
-                'idProducto' => $validatedData['idProducto'],
-                'idModelo' => $validatedData['idModelo'],
-                'idTalla' => $validatedData['idTalla'],
-                'cantidad' => $validatedData['cantidad'],
-                'precio' => $nuevoPrecio
-            ]);
-        }
+            // Obtener el precio del producto
+            $precio = $producto->precio;
+            
+            // Obtener el carrito del usuario (si no existe, lo crea)
+            $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
+            
+            // Verificar si el producto ya está en el carrito para el modelo y talla específicos
+            $carritoDetalle = CarritoDetalle::where('idCarrito', $carrito->idCarrito)
+                                            ->where('idProducto', $validatedData['idProducto'])
+                                            ->where('idModelo', $validatedData['idModelo'])
+                                            ->where('idTalla', $validatedData['idTalla'])
+                                            ->first();
+            
+            // Si el producto ya está en el carrito
+            if ($carritoDetalle) {
+                // Calcular la nueva cantidad total sumando la cantidad actual con la nueva
+                $nuevaCantidad = $carritoDetalle->cantidad + $validatedData['cantidad'];
+                
+                // Verificar si la cantidad total excede el stock disponible
+                if ($nuevaCantidad > $stock->cantidad) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La cantidad total en el carrito supera el stock disponible',
+                    ], 400);
+                }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Producto agregado al carrito con éxito',
-        ], 201);
-    
-    } catch (\Illuminate\Database\QueryException $e) {
-        // Log de error en base de datos
-        Log::error('Error en la base de datos: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Error en la base de datos',
-            'error' => $e->getMessage()
-        ], 500);
+                // Actualizar la cantidad y recalcular el precio total
+                $nuevoPrecio = $precio * $nuevaCantidad;
+
+                // Actualizar el detalle del carrito
+                $carritoDetalle->update([
+                    'cantidad' => $nuevaCantidad,
+                    'precio' => $nuevoPrecio
+                ]);
+            } else {
+                // Si el producto no está en el carrito, lo agregamos
+                // Verificar si la cantidad no supera el stock disponible
+                if ($validatedData['cantidad'] > $stock->cantidad) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La cantidad solicitada excede el stock disponible',
+                    ], 400);
+                }
+
+                // Crear un nuevo detalle en el carrito
+                $nuevoPrecio = $precio * $validatedData['cantidad'];
+                CarritoDetalle::create([
+                    'idCarrito' => $carrito->idCarrito,
+                    'idProducto' => $validatedData['idProducto'],
+                    'idModelo' => $validatedData['idModelo'],
+                    'idTalla' => $validatedData['idTalla'],
+                    'cantidad' => $validatedData['cantidad'],
+                    'precio' => $nuevoPrecio
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Producto agregado al carrito con éxito',
+            ], 201);
+        
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Log de error en base de datos
+            Log::error('Error en la base de datos: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en la base de datos',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            // Log de error inesperado
+            Log::error('Error inesperado al agregar al carrito: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al agregar al carrito',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function listarCarrito()
+{
+    try {
+        $userId = Auth::id();
+
+        // Obtener los detalles del carrito del usuario autenticado
+        $carritoDetalles = CarritoDetalle::with('producto', 'modelo', 'modelo.tallas') // Cargar las tallas relacionadas correctamente
+            ->whereHas('carrito', function($query) use ($userId) {
+                $query->where('idUsuario', $userId);
+            })
+            ->get();
+
+        $productos = $carritoDetalles->map(function($detalle) {
+            // Obtener el idProducto desde el modelo relacionado
+            $productoId = $detalle->modelo->idProducto;
+
+            // Obtener el stock desde la tabla 'stock' filtrado por idModelo y idTalla
+            $stock = Stock::where('idModelo', $detalle->modelo->idModelo) // Relacionamos con idModelo
+                ->where('idTalla', $detalle->idTalla)  // Relacionamos con idTalla
+                ->first();
+
+            // Si no se encuentra el stock, lo configuramos a 0
+            $stockCantidad = $stock ? $stock->cantidad : 0;
+
+            // Obtener la primera imagen del modelo desde 'imagenes_modelo'
+            $imagenModelo = ImagenModelo::where('idModelo', $detalle->modelo->idModelo)
+                                        ->orderBy('idImagen', 'asc') // Aseguramos de obtener la primera imagen
+                                        ->first();
+
+            // Obtener nombre de la talla desde la relación
+            $nombreTalla = $detalle->modelo->tallas->first() ? $detalle->modelo->tallas->first()->nombreTalla : 'Talla no disponible';
+            $nombreModelo = $detalle->modelo ? $detalle->modelo->nombreModelo : 'Modelo no disponible';
+
+            return [
+                'idProducto' => $productoId,
+                'nombreProducto' => $detalle->producto->nombreProducto,
+                'descripcion' => $detalle->producto->descripcion,
+                'cantidad' => $detalle->cantidad,
+                'precio' => (float) $detalle->producto->precio,
+                'subtotal' => (float) ($detalle->producto->precio * $detalle->cantidad),
+                'stock' => (int) $stockCantidad,
+                'imagen' => $imagenModelo ? $imagenModelo->urlImagen : '',
+                'idCategoria' => $detalle->producto->idCategoria,
+                'nombreTalla' => $nombreTalla,
+                'nombreModelo' => $nombreModelo,
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $productos], 200);
     } catch (\Exception $e) {
-        // Log de error inesperado
-        Log::error('Error inesperado al agregar al carrito: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al agregar al carrito',
-            'error' => $e->getMessage()
-        ], 500);
+        Log::error('Error al obtener el carrito: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
     }
 }
 
-    public function listarCarrito()
-    {
-        try {
-            $userId = Auth::id();
     
-            // Obtener los productos en el carrito del usuario autenticado
-            $carritoDetalles = CarritoDetalle::with('producto')
-                ->whereHas('carrito', function($query) use ($userId) {
-                    $query->where('idUsuario', $userId);
-                })
-                ->get();
-    
-            $productos = $carritoDetalles->map(function($detalle) {
-                return [
-                    'idProducto' => $detalle->producto->idProducto,
-                    'nombreProducto' => $detalle->producto->nombreProducto,
-                    'descripcion' => $detalle->producto->descripcion,
-                    'cantidad' => $detalle->cantidad,
-                    'precio' => (float) $detalle->producto->precio, // Cambié esto para que obtenga el precio correcto del producto
-                    'subtotal' => (float) ($detalle->producto->precio * $detalle->cantidad), // Se calcula correctamente
-                    'stock' => (int) $detalle->producto->stock,
-                    'imagen' => $detalle->producto->imagen,  // Asegúrate de que el campo 'imagen' exista
-                    'idCategoria' => $detalle->producto->idCategoria,
-                ];
-            });
-    
-            return response()->json(['success' => true, 'data' => $productos], 200);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
-        }
-    }
     public function actualizarCantidad(Request $request, $idProducto)
     {
         $userId = Auth::id();

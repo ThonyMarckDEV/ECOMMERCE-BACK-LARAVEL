@@ -25,4 +25,10 @@ class Talla extends Model
     {
         return $this->hasMany(Stock::class, 'idTalla', 'idTalla');
     }
+
+    // Relación con Modelos a través de la tabla stock
+    public function modelos()
+    {
+        return $this->belongsToMany(Modelo::class, 'stock', 'idTalla', 'idModelo');
+    }
 }
