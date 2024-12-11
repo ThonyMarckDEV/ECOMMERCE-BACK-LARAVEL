@@ -374,14 +374,14 @@ class ClienteController extends Controller
                 return response()->json(['success' => false, 'message' => 'El idUsuario es obligatorio'], 400);
             }
 
-            $productos = DB::table('carrito_detalle as cd')
+           $productos = DB::table('carrito_detalle as cd')
             ->join('carrito as c', 'cd.idCarrito', '=', 'c.idCarrito')
             ->join('productos as p', 'cd.idProducto', '=', 'p.idProducto')
             ->join('modelos as m', 'cd.idModelo', '=', 'm.idModelo')
             ->leftJoin('tallas as t', 'cd.idTalla', '=', 't.idTalla')
             ->leftJoin('stock as s', function ($join) {
                 $join->on('s.idModelo', '=', 'm.idModelo')
-                     ->on('s.idTalla', '=', 'cd.idTalla');
+                    ->on('s.idTalla', '=', 'cd.idTalla');
             })
             ->leftJoin('imagenes_modelo as im', 'm.idModelo', '=', 'im.idModelo')
             ->select(
