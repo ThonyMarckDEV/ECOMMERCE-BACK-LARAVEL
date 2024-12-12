@@ -276,7 +276,7 @@ class ClienteController extends Controller
                             ->where('idTalla', $validatedData['idTalla'])
                             ->first();
             
-            // Verificar si hay stock disponible
+           // Verificar si hay stock disponible
             if (!$stock || $stock->cantidad < $validatedData['cantidad']) {
                 return response()->json([
                     'success' => false,
@@ -877,15 +877,16 @@ class ClienteController extends Controller
     
             // Verifica si hay direcciones
             if ($direcciones->isEmpty()) {
-                return response()->json(['message' => 'No se encontraron direcciones'], 404);
+                return response()->json(['message' => 'No tienes direcciones agregadas'], 404);
             }
-    
+            
             return response()->json($direcciones, 200);
         } catch (\Exception $e) {
             Log::error('Error al listar direcciones: ' . $e->getMessage());
             return response()->json(['error' => 'Error interno al listar direcciones'], 500);
         }
     }
+
     public function agregarDireccion(Request $request)
     {
         try {
@@ -902,7 +903,20 @@ class ClienteController extends Controller
                 'longitud' => 'required|numeric',
             ]);
     
-            // Crear la dirección
+            // Buscar si ya existe una dirección marcada como "usando"
+            $direccionUsando = DetalleDireccion::where('idUsuario', $request->idUsuario)
+                                               ->where('estado', 'usando')
+                                               ->first();
+    
+            if ($direccionUsando) {
+                // Si ya hay una dirección marcada como "usando", actualízala a "no usando"
+                $direccionUsando->estado = 'no usando';
+                $direccionUsando->save();
+                Log::info('Dirección anterior marcada como "usando" fue cambiada a "no usando"');
+            }
+    
+            // Crear la nueva dirección, asegurándote de marcarla como "usando"
+            $request->merge(['estado' => 'usando']);  // Agregamos el estado "usando" antes de crear la nueva dirección
             $direccion = DetalleDireccion::create($request->all());
     
             // Enviar correo de confirmación
@@ -915,7 +929,7 @@ class ClienteController extends Controller
             return response()->json(['error' => 'Error interno al agregar dirección'], 500);
         }
     }
-
+    
     public function eliminarDireccion($idDireccion)
     {
         try {

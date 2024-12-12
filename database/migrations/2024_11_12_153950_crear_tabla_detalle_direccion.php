@@ -14,7 +14,7 @@ class CrearTablaDetalleDireccion extends Migration
             $table->string('region');
             $table->string('provincia');
             $table->string('direccion');
-            $table->string('estado')->default('no usando');
+            $table->string('estado')->default('usando');
             $table->decimal('latitud', 10, 8);
             $table->decimal('longitud', 11, 8);
 

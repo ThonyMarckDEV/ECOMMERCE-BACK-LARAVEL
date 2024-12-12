@@ -41,7 +41,7 @@ use App\Http\Controllers\AuthController;
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
 
-        Route::put('carrito_detalle/{idDetalle}', [ClienteController::class, 'actualizarCantidad']); // Actualizar cantidad de producto
+       
         
 //================================================================================================
 
@@ -105,7 +105,7 @@ use App\Http\Controllers\AuthController;
         // Ruta para agregar un producto al carrito
         Route::post('agregarCarrito', [ClienteController::class, 'agregarAlCarrito']);
         Route::post('carrito', [ClienteController::class, 'listarCarrito']); // Listar productos en el carrito
-       
+        Route::put('carrito_detalle/{idDetalle}', [ClienteController::class, 'actualizarCantidad']); // Actualizar cantidad de producto
         Route::delete('carrito_detalle/{idDetalle}', [ClienteController::class, 'eliminarProducto']); // Eliminar producto del carrito
         Route::get('/carrito/cantidad', [ClienteController::class, 'obtenerCantidadCarrito']);
       
