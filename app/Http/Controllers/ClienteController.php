@@ -440,48 +440,77 @@ class ClienteController extends Controller
         }
     }
 
-    
-    public function actualizarCantidad(Request $request, $idProducto)
+    public function actualizarCantidad(Request $request, $idDetalle)
     {
-        $userId = Auth::id();
+        // Obtener la cantidad y el idUsuario desde el cuerpo de la solicitud
         $cantidad = $request->input('cantidad');
+        $idUsuario = $request->input('idUsuario'); // Obtener el idUsuario
         
-        // Buscar el detalle del carrito que corresponde al producto y usuario autenticado
-        $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($userId) {
-                $query->where('carrito.idUsuario', $userId);
-            })
-            ->where('idProducto', $idProducto)
-            ->first();
-    
-        if (!$detalle) {
-            return response()->json(['success' => false, 'message' => 'Producto no encontrado en el carrito'], 404);
-        }
-    
-        // Obtener el producto
-        $producto = Producto::find($idProducto);
-        if (!$producto) {
-            return response()->json(['success' => false, 'message' => 'Producto no encontrado en la base de datos'], 404);
-        }
-    
-        // Verificar si la cantidad solicitada excede el stock disponible
-        if ($cantidad > $producto->stock) {
+        // Verificar que la cantidad es válida
+        if (!is_numeric($cantidad) || $cantidad <= 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'La cantidad solicitada supera el stock disponible'
+                'message' => 'La cantidad debe ser un número mayor que 0.',
             ], 400);
         }
-    
-        // Actualizar la cantidad en el carrito
+
+        // Buscar el detalle del carrito con el idDetalle y el idUsuario recibido
+        $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($idUsuario) {
+                $query->where('carrito.idUsuario', $idUsuario);
+            })
+            ->where('idDetalle', $idDetalle)
+            ->first();
+
+        if (!$detalle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Detalle no encontrado en el carrito',
+            ], 404);
+        }
+
+        // Obtener los datos del stock según el idModelo y idTalla del detalle
+        $stock = DB::table('stock')
+            ->where('idModelo', $detalle->idModelo)
+            ->where('idTalla', $detalle->idTalla)
+            ->first();
+
+        if (!$stock) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró stock para el modelo y talla especificados',
+            ], 404);
+        }
+
+        // Verificar si la cantidad solicitada excede el stock disponible
+        if ($cantidad > $stock->cantidad) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cantidad solicitada supera el stock disponible',
+            ], 400);
+        }
+
+        // Obtener el producto asociado al detalle
+        $producto = Producto::find($detalle->idProducto);
+        if (!$producto) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Producto no encontrado en la base de datos',
+            ], 404);
+        }
+
+        // Actualizar la cantidad y el subtotal en el carritoDetalle
         $detalle->cantidad = $cantidad;
-    
-        // Actualizar el precio total (subtotal) en el carritoDetalle
-        $detalle->precio = $producto->precio * $cantidad;
-    
+        $detalle->subtotal = $producto->precio * $cantidad;
+
         // Guardar los cambios
         $detalle->save();
-    
-        return response()->json(['success' => true, 'message' => 'Cantidad y precio actualizados correctamente'], 200);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cantidad y precio actualizados correctamente',
+        ], 200);
     }
+
     
     // Eliminar un producto del carrito por idDetalle
     public function eliminarProducto($idDetalle)
