@@ -876,7 +876,7 @@ class ClienteController extends Controller
     
             // Obtén las direcciones del usuario
             $direcciones = DetalleDireccion::where('idUsuario', $idUsuario)
-                ->select('idDireccion', 'idUsuario', 'region', 'provincia', 'direccion', 'estado', 'latitud', 'longitud')
+                ->select('idDireccion', 'idUsuario', 'departamento', 'provincia','distrito', 'direccion', 'estado', 'latitud', 'longitud')
                 ->get();
     
             // Verifica si hay direcciones
@@ -900,8 +900,9 @@ class ClienteController extends Controller
             // Validar los datos recibidos
             $request->validate([
                 'idUsuario' => 'required|integer|exists:usuarios,idUsuario',
-                'region' => 'required|string|max:255',
+                'departamento' => 'required|string|max:255',
                 'provincia' => 'required|string|max:255',
+                'distrito' => 'required|string|max:255',
                 'direccion' => 'required|string|max:255',
                 'latitud' => 'required|numeric',
                 'longitud' => 'required|numeric',

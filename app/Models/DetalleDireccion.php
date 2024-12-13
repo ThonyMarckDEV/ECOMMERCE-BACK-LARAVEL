@@ -15,7 +15,7 @@ class DetalleDireccion extends Model
 
 
     protected $fillable = [
-        'idUsuario', 'region', 'provincia', 'direccion', 'estado', 'latitud', 'longitud'
+        'idUsuario', 'departamento', 'provincia', 'distrito', 'direccion', 'estado', 'latitud', 'longitud'
     ];
 
     

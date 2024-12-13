@@ -22,7 +22,7 @@ use App\Http\Controllers\AuthController;
         Route::post('refresh-token', [AuthController::class, 'refreshToken']);
 
         Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
-
+        
         Route::post('/check-status', [AuthController::class, 'checkStatus']);
 
         Route::post('/send-message', [AuthController::class, 'sendContactEmail']);
@@ -34,8 +34,6 @@ use App\Http\Controllers\AuthController;
         Route::post('/change-passwordUser', [AuthController::class, 'changePasswordUser']);
 
         Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
-
-        
 
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
@@ -91,8 +89,11 @@ use App\Http\Controllers\AuthController;
         Route::get('/listarProductos', [AdminController::class, 'listarProductos']);
     });
 
+    //RUTAS AUTH PARA ROLES EN GENERAL
 
-
+    // Route::middleware(['auth.jwt', 'checkRoleMW:admin,cliente'])->group(function () { 
+      
+    // });
 
 
     // RUTAS PARA CLIENTE VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)

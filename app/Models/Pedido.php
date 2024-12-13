@@ -19,6 +19,7 @@ class Pedido extends Model
         'idUsuario',
         'total',
         'estado',
+        'direccion',
         'fecha_pedido', // Asigna la fecha y hora actual
     ];
 

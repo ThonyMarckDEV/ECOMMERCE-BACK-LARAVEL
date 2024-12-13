@@ -11,8 +11,9 @@ class CrearTablaDetalleDireccion extends Migration
         Schema::create('detalle_direcciones', function (Blueprint $table) {
             $table->id('idDireccion');
             $table->unsignedBigInteger('idUsuario');
-            $table->string('region');
+            $table->string('departamento');
             $table->string('provincia');
+            $table->string('distrito');
             $table->string('direccion');
             $table->string('estado')->default('usando');
             $table->decimal('latitud', 10, 8);
