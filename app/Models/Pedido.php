@@ -19,7 +19,12 @@ class Pedido extends Model
         'idUsuario',
         'total',
         'estado',
+        'departamento',
+        'distrito',
+        'provincia',
         'direccion',
+        'latitud',
+        'longitud',
         'fecha_pedido', // Asigna la fecha y hora actual
     ];
 

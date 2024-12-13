@@ -539,174 +539,155 @@ class ClienteController extends Controller
     }
 
 
-     public function crearPedido(Request $request)
-     {
-         DB::beginTransaction();
-     
-         try {
-             // Validación de los datos de entrada
-             $request->validate([
-                 'idUsuario' => 'required|integer',
-                 'idCarrito' => 'required|integer',
-                 'total' => 'required|numeric',
-                 'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion',
-             ]);
-     
-             // Extraemos los datos del request
-             $idUsuario = $request->input('idUsuario');
-             $idCarrito = $request->input('idCarrito');
-             $total = $request->input('total');
-             $idDireccion = $request->input('idDireccion');
-             $estadoPedido = 'pendiente';
-     
-             // Crear el pedido
-             $pedidoId = DB::table('pedidos')->insertGetId([
-                 'idUsuario' => $idUsuario,
-                 'total' => $total,
-                 'estado' => $estadoPedido,
-             ]);
-     
-             // Insertar la dirección en la tabla de detalle_direccion_pedido
-             DB::table('detalle_direccion_pedido')->insert([
-                 'idPedido' => $pedidoId,
-                 'idDireccion' => $idDireccion,
-             ]);
-     
-             // Obtener los detalles del carrito
-             $detallesCarrito = DB::table('carrito_detalle')
-                 ->where('idCarrito', $idCarrito)
-                 ->get();
-     
-             if ($detallesCarrito->isEmpty()) {
-                 throw new \Exception('El carrito está vacío.');
-             }
-     
-             $productos = [];
-             foreach ($detallesCarrito as $detalle) {
-                 // Obtener el producto con el precio correcto desde la tabla productos
-                 $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
-                 if (!$producto || $producto->stock < $detalle->cantidad) {
-                     throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}.");
-                 }
-     
-                 // Obtener el precio unitario del producto y calcular el subtotal
-                 $precioUnitario = $producto->precio;
-                 $subtotal = $detalle->cantidad * $precioUnitario;
-     
-                 // Insertar en la tabla detalle_pedido
-                 DB::table('pedido_detalle')->insert([
-                     'idPedido' => $pedidoId,
-                     'idProducto' => $detalle->idProducto,
-                     'cantidad' => $detalle->cantidad,
-                     'precioUnitario' => $precioUnitario,  // Utilizamos el precio correcto
-                     'subtotal' => $subtotal,
-                 ]);
-     
-                 $productos[] = (object) [
-                     'nombreProducto' => $producto->nombreProducto,
-                     'cantidad' => $detalle->cantidad,
-                     'precioUnitario' => $precioUnitario,
-                     'subtotal' => $subtotal,
-                 ];
-             }
-     
-             // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
-             DB::table('pagos')->insert([
-                 'idPedido' => $pedidoId,
-                 'monto' => $total,
-                 'estado_pago' => 'pendiente', // El pago aún no está completado
-             ]);
-     
-             // Limpiar el carrito de detalles (vaciar el carrito)
-             DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
-     
-             // Confirmamos la transacción
-             DB::commit();
-     
-             // Enviar el correo de confirmación al usuario
-             $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
-             Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
-     
-             // Respuesta exitosa
-             return response()->json([
-                 'success' => true,
-                 'message' => 'Pedido creado exitosamente.',
-                 'idPedido' => $pedidoId,
-             ], 201);
-     
-         } catch (\Exception $e) {
-             // Si hay un error, revertimos la transacción
-             DB::rollBack();
-             Log::error('Error al crear pedido y pago: ' . $e->getMessage());
-             return response()->json([
-                 'success' => false,
-                 'message' => 'Error al crear el pedido.',
-                 'error' => $e->getMessage(),
-             ], 500);
-         }
-     }
+    public function crearPedido(Request $request)
+    {
+        DB::beginTransaction();
 
-    //  public function listarPedidos($idUsuario)
-    //  {
-    //      try {
-    //          // Verificar que el idUsuario existe en la tabla 'usuarios'
-    //          $usuarioExiste = DB::table('usuarios')->where('idUsuario', $idUsuario)->exists();
-    //          if (!$usuarioExiste) {
-    //              return response()->json([
-    //                  'success' => false,
-    //                  'message' => 'Usuario no encontrado.',
-    //              ], 404);
-    //          }
- 
-    //          // Obtener los pedidos del usuario, ordenados por 'idPedido' descendente
-    //          $pedidos = DB::table('pedidos')
-    //              ->where('idUsuario', $idUsuario)
-    //              ->orderBy('idPedido', 'desc') // Ordenar por idPedido descendente
-    //              ->get();
- 
-    //          // Para cada pedido, obtener los detalles (productos)
-    //          $pedidosConDetalles = [];
- 
-    //          foreach ($pedidos as $pedido) {
-    //              // Obtener los detalles del pedido desde 'pedido_detalle' y 'productos'
-    //              $detalles = DB::table('pedido_detalle')
-    //                  ->where('idPedido', $pedido->idPedido)
-    //                  ->join('productos', 'pedido_detalle.idProducto', '=', 'productos.idProducto')
-    //                  ->select(
-    //                      'pedido_detalle.idDetallePedido',
-    //                      'productos.idProducto',
-    //                      'productos.nombreProducto',
-    //                      'pedido_detalle.cantidad',
-    //                      'pedido_detalle.precioUnitario',
-    //                      'pedido_detalle.subtotal'
-    //                  )
-    //                  ->get();
- 
-    //              // Agregar los detalles al pedido
-    //              $pedidosConDetalles[] = [
-    //                  'idPedido' => $pedido->idPedido,
-    //                  'idUsuario' => $pedido->idUsuario,
-    //                  'total' => $pedido->total,
-    //                  'estado' => $pedido->estado,
-    //                  'detalles' => $detalles,
-    //              ];
-    //          }
- 
-    //          return response()->json([
-    //              'success' => true,
-    //              'pedidos' => $pedidosConDetalles,
-    //          ], 200);
- 
-    //      } catch (\Exception $e) {
-    //          Log::error('Error al listar pedidos: ' . $e->getMessage());
- 
-    //          return response()->json([
-    //              'success' => false,
-    //              'message' => 'Error al obtener los pedidos.',
-    //              'error' => $e->getMessage(),
-    //          ], 500);
-    //      }
-    //  }
+        try {
+            // Validación de los datos de entrada
+            $request->validate([
+                'idUsuario' => 'required|integer',
+                'idCarrito' => 'required|integer',
+                'total' => 'required|numeric',
+                'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion'
+            ]);
+
+            // Extraemos los datos del request
+            $idUsuario = $request->input('idUsuario');
+            $idCarrito = $request->input('idCarrito');
+            $total = $request->input('total');
+            $idDireccion = $request->input('idDireccion');
+            $estadoPedido = 'pendiente';
+
+            // Obtener los detalles de la dirección desde la tabla detalle_direcciones
+            $direccionDetalles = DB::table('detalle_direcciones')
+                ->where('idDireccion', $idDireccion)
+                ->where('idUsuario', $idUsuario)
+                ->where('estado', 'usando')  // Solo seleccionar si el estado es 'usando'
+                ->first();
+
+            if (!$direccionDetalles) {
+                throw new \Exception('La dirección proporcionada no existe o no está en uso.');
+            }
+
+            // Extraemos los datos de la dirección
+            $departamento = $direccionDetalles->departamento;
+            $provincia = $direccionDetalles->provincia;
+            $distrito = $direccionDetalles->distrito;
+            $direccion = $direccionDetalles->direccion;
+            $latitud = $direccionDetalles->latitud;
+            $longitud = $direccionDetalles->longitud;
+
+            // Crear el pedido con los nuevos campos obtenidos de la dirección
+            $pedidoId = DB::table('pedidos')->insertGetId([
+                'idUsuario' => $idUsuario,
+                'total' => $total,
+                'estado' => $estadoPedido,
+                'departamento' => $departamento,
+                'provincia' => $provincia,
+                'distrito' => $distrito,
+                'direccion' => $direccion,
+                'latitud' => $latitud,
+                'longitud' => $longitud,
+                'fecha_pedido' => now(), // Se agrega la fecha actual del pedido
+            ]);
+
+            // Insertar la dirección en la tabla de detalle_direccion_pedido
+            DB::table('detalle_direccion_pedido')->insert([
+                'idPedido' => $pedidoId,
+                'idDireccion' => $idDireccion,
+            ]);
+
+            // Obtener los detalles del carrito
+            $detallesCarrito = DB::table('carrito_detalle')
+                ->where('idCarrito', $idCarrito)
+                ->get();
+
+            if ($detallesCarrito->isEmpty()) {
+                throw new \Exception('El carrito está vacío.');
+            }
+
+            $productos = [];
+            foreach ($detallesCarrito as $detalle) {
+                // Obtener el producto con el precio correcto desde la tabla productos
+                $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
+                
+                if (!$producto) {
+                    throw new \Exception("Producto no encontrado para el ID: {$detalle->idProducto}.");
+                }
+            
+                // Consultar la cantidad de stock disponible para el modelo y talla
+                $stock = DB::table('stock')
+                    ->where('idModelo', $detalle->idModelo)
+                    ->where('idTalla', $detalle->idTalla)
+                    ->value('cantidad');
+            
+                if ($stock === null) {
+                    throw new \Exception("No se encontró stock para el producto: {$producto->nombreProducto}, modelo: {$detalle->idModelo}, talla: {$detalle->idTalla}.");
+                }
+            
+                if ($stock < $detalle->cantidad) {
+                    throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}. Solo hay {$stock} unidades disponibles.");
+                }
+            
+                // Obtener el precio unitario del producto y calcular el subtotal
+                $precioUnitario = $producto->precio;
+                $subtotal = $detalle->cantidad * $precioUnitario;
+            
+                // Insertar en la tabla pedido_detalle con los nuevos campos (idModelo y idTalla)
+                DB::table('pedido_detalle')->insert([
+                    'idPedido' => $pedidoId,
+                    'idProducto' => $detalle->idProducto,
+                    'idModelo' => $detalle->idModelo,  // Nuevo campo
+                    'idTalla' => $detalle->idTalla,    // Nuevo campo
+                    'cantidad' => $detalle->cantidad,
+                    'precioUnitario' => $precioUnitario,
+                    'subtotal' => $subtotal,
+                ]);
+            
+                $productos[] = (object) [
+                    'nombreProducto' => $producto->nombreProducto,
+                    'cantidad' => $detalle->cantidad,
+                    'precioUnitario' => $precioUnitario,
+                    'subtotal' => $subtotal,
+                ];
+            }
+
+            // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
+            DB::table('pagos')->insert([
+                'idPedido' => $pedidoId,
+                'monto' => $total,
+                'estado_pago' => 'pendiente', // El pago aún no está completado
+            ]);
+
+            // Limpiar el carrito de detalles (vaciar el carrito)
+            DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
+
+            // Confirmamos la transacción
+            DB::commit();
+
+            // Enviar el correo de confirmación al usuario
+            $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
+            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
+
+            // Respuesta exitosa
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido creado exitosamente.',
+                'idPedido' => $pedidoId,
+            ], 201);
+
+        } catch (\Exception $e) {
+            // Si hay un error, revertimos la transacción
+            DB::rollBack();
+            Log::error('Error al crear pedido y pago: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear el pedido.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function listarPedidos($idUsuario)
     {
@@ -719,57 +700,70 @@ class ClienteController extends Controller
                     'message' => 'Usuario no encontrado.',
                 ], 404);
             }
-    
+
             // Obtener los pedidos del usuario, ordenados por 'idPedido' descendente
             $pedidos = DB::table('pedidos')
                 ->where('idUsuario', $idUsuario)
                 ->orderBy('idPedido', 'desc') // Ordenar por idPedido descendente
                 ->get();
-    
+
             // Para cada pedido, obtener los detalles (productos) y la dirección
             $pedidosConDetallesYDireccion = [];
-    
+
             foreach ($pedidos as $pedido) {
-                // Obtener los detalles del pedido desde 'pedido_detalle' y 'productos'
+                // Obtener los detalles del pedido desde 'pedido_detalle', 'productos', 'modelos', y 'tallas'
                 $detalles = DB::table('pedido_detalle')
                     ->where('idPedido', $pedido->idPedido)
                     ->join('productos', 'pedido_detalle.idProducto', '=', 'productos.idProducto')
+                    ->join('modelos', 'pedido_detalle.idModelo', '=', 'modelos.idModelo')
+                    ->join('tallas', 'pedido_detalle.idTalla', '=', 'tallas.idTalla')
                     ->select(
                         'pedido_detalle.idDetallePedido',
                         'productos.idProducto',
                         'productos.nombreProducto',
+                        'modelos.nombreModelo',
+                        'tallas.nombreTalla',
                         'pedido_detalle.cantidad',
                         'pedido_detalle.precioUnitario',
                         'pedido_detalle.subtotal'
                     )
                     ->get();
-    
+
                 // Obtener la dirección del pedido (corregido el join)
                 $direccion = DB::table('detalle_direccion_pedido')
-                    ->where('idPedido', $pedido->idPedido)
-                    ->join('detalle_direcciones', 'detalle_direccion_pedido.idDireccion', '=', 'detalle_direcciones.idDireccion') // Relación corregida aquí
-                    ->select('detalle_direcciones.region', 'detalle_direcciones.provincia', 'detalle_direcciones.direccion')
-                    ->first();
-    
+                ->where('idPedido', $pedido->idPedido)
+                ->join('detalle_direcciones', 'detalle_direccion_pedido.idDireccion', '=', 'detalle_direcciones.idDireccion') // Relación corregida aquí
+                ->select(
+                    'detalle_direcciones.departamento', // Cambiado de 'region' a 'departamento'
+                    'detalle_direcciones.provincia',
+                    'detalle_direcciones.distrito',
+                    'detalle_direcciones.direccion'
+                )
+                ->first();
+
                 // Agregar los detalles y la dirección al pedido
                 $pedidosConDetallesYDireccion[] = [
                     'idPedido' => $pedido->idPedido,
                     'idUsuario' => $pedido->idUsuario,
                     'total' => $pedido->total,
                     'estado' => $pedido->estado,
+                    'departamento' => $pedido->departamento,
+                    'distrito' => $pedido->distrito,
+                    'provincia' => $pedido->provincia,
+                    'direccion' => $pedido->direccion,
                     'detalles' => $detalles,
-                    'direccion' => $direccion, // Dirección agregada
+                    'direccionEnvio' => $direccion,
                 ];
             }
-    
+
             return response()->json([
                 'success' => true,
                 'pedidos' => $pedidosConDetallesYDireccion,
             ], 200);
-    
+
         } catch (\Exception $e) {
             Log::error('Error al listar pedidos: ' . $e->getMessage());
-    
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener los pedidos.',

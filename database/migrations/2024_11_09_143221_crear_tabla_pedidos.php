@@ -14,7 +14,12 @@ class CrearTablaPedidos extends Migration
             $table->unsignedBigInteger('idUsuario');
             $table->decimal('total', 10, 2);
             $table->string('estado', 255)->default('pendiente');
+            $table->string('departamento');
+            $table->string('distrito');
+            $table->string('provincia');
             $table->string('direccion', 255); // Nueva columna para la dirección
+            $table->decimal('latitud', 10, 8);
+            $table->decimal('longitud', 11, 8);
             $table->timestamp('fecha_pedido')->nullable()->default(DB::raw('CURRENT_TIMESTAMP')); // Nueva columna para fecha del pedido
 
             // Claves foráneas
