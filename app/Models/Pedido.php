@@ -51,10 +51,5 @@ class Pedido extends Model
         return $this->hasMany(PedidoDetalle::class, 'idPedido', 'idPedido');
     }
 
-     // Relación con DetalleDireccionPedido
-     public function detalleDireccionPedido()
-     {
-         return $this->hasOne(DetalleDireccionPedido::class, 'idPedido', 'idPedido');
-     }
 
 }

@@ -89,12 +89,6 @@ use App\Http\Controllers\AuthController;
         Route::get('/listarProductos', [AdminController::class, 'listarProductos']);
     });
 
-    //RUTAS AUTH PARA ROLES EN GENERAL
-
-    // Route::middleware(['auth.jwt', 'checkRoleMW:admin,cliente'])->group(function () { 
-      
-    // });
-
 
     // RUTAS PARA CLIENTE VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
     Route::middleware(['auth.jwt', 'checkRoleMW:cliente'])->group(function () {

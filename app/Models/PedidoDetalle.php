@@ -13,6 +13,8 @@ class PedidoDetalle extends Model
     protected $fillable = [
         'idPedido',
         'idProducto',
+        'idModelo',
+        'idTalla',
         'cantidad',
         'precioUnitario',
         'subtotal',
@@ -29,4 +31,15 @@ class PedidoDetalle extends Model
     {
         return $this->belongsTo(Producto::class, 'idProducto', 'idProducto');
     }
+
+     // Relación con Modelo (si existe)
+     public function modelo()
+     {
+         return $this->belongsTo(Modelo::class, 'idModelo', 'idModelo');  // Verifica que el segundo parámetro sea 'idModelo'
+     }
+     
+     public function talla()
+     {
+         return $this->belongsTo(Talla::class, 'idTalla', 'idTalla');  // Asegúrate de que el segundo parámetro esté bien configurado
+     }
 }
