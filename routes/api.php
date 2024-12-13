@@ -38,8 +38,6 @@ use App\Http\Controllers\AuthController;
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
-
-       
         
 //================================================================================================
 
