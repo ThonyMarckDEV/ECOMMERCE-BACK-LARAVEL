@@ -139,6 +139,10 @@ class ClienteController extends Controller
                 ]);
             }
         ]);
+
+            
+        // Filtrar por estado 'activo' (se asume que 'estado' es un campo en la tabla 'productos')
+        $query->where('estado', 'activo');
         
         // Filtrar por idProducto si el parámetro 'idProducto' existe
         if ($idProducto) {

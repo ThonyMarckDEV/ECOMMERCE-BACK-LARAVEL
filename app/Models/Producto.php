@@ -22,6 +22,7 @@ class Producto extends Model
         'precio',
         'stock',
         'idCategoria', // Clave foránea hacia la tabla categorias
+        'estado'
     ];
 
     // Relación de muchos a uno hacia Categoria
