@@ -114,6 +114,7 @@ use App\Http\Controllers\AuthController;
         Route::get('/obtenerDireccionPedidoUser/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
         Route::get('/pedidos/{idUsuario}', [ClienteController::class, 'listarPedidos']);
         Route::get('/listarDireccion/{idUsuario}', [ClienteController::class, 'listarDireccion']);
+        Route::get('/listarDireccionPedido/{idUsuario}', [ClienteController::class, 'listarDireccionPedido']);
 
         Route::post('/agregarDireccion', [ClienteController::class, 'agregarDireccion']);
         Route::delete('/eliminarDireccion/{id}', [ClienteController::class, 'eliminarDireccion']);

@@ -885,6 +885,34 @@ class ClienteController extends Controller
         }
     }
 
+    public function listarDireccionPedido($idUsuario)
+    {
+        try {
+            // Verifica si el usuario existe
+            if (!Usuario::find($idUsuario)) {
+                return response()->json(['error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Obtén la dirección cuyo estado sea 'usando'
+            $direccionUsando = DetalleDireccion::where('idUsuario', $idUsuario)
+                ->where('estado', 'usando')  // Solo seleccionar donde el estado es 'usando'
+                ->select('idDireccion', 'idUsuario', 'departamento', 'provincia', 'distrito', 'direccion', 'latitud', 'longitud')
+                ->first(); // Usamos 'first' para obtener solo una dirección
+
+            // Verifica si se encontró una dirección 'usando'
+            if (!$direccionUsando) {
+                return response()->json(['message' => 'No tienes ninguna dirección activa o en uso'], 404);
+            }
+
+            // Devuelve la dirección encontrada
+            return response()->json($direccionUsando, 200);
+        } catch (\Exception $e) {
+            Log::error('Error al listar direcciones: ' . $e->getMessage());
+            return response()->json(['error' => 'Error interno al listar direcciones'], 500);
+        }
+    }
+
+
     public function agregarDireccion(Request $request)
     {
         try {
