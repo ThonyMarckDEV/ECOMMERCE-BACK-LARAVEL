@@ -918,8 +918,8 @@ class ClienteController extends Controller
     {
         try {
             // Log para verificar el contenido de la solicitud
-            Log::info('Datos recibidos:', $request->all());  // Esto te ayudará a ver si el idUsuario está presente
-    
+            Log::info('Datos recibidos:', $request->all());
+        
             // Validar los datos recibidos
             $request->validate([
                 'idUsuario' => 'required|integer|exists:usuarios,idUsuario',
@@ -927,30 +927,28 @@ class ClienteController extends Controller
                 'provincia' => 'required|string|max:255',
                 'distrito' => 'required|string|max:255',
                 'direccion' => 'required|string|max:255',
-                'latitud' => 'required|numeric',
-                'longitud' => 'required|numeric',
             ]);
-    
+        
             // Buscar si ya existe una dirección marcada como "usando"
             $direccionUsando = DetalleDireccion::where('idUsuario', $request->idUsuario)
                                                ->where('estado', 'usando')
                                                ->first();
-    
+        
             if ($direccionUsando) {
                 // Si ya hay una dirección marcada como "usando", actualízala a "no usando"
                 $direccionUsando->estado = 'no usando';
                 $direccionUsando->save();
-                Log::info('Dirección anterior marcada como "usando" fue cambiada a "no usando"');
+               // Log::info('Dirección anterior marcada como "usando" fue cambiada a "no usando"');
             }
-    
+        
             // Crear la nueva dirección, asegurándote de marcarla como "usando"
             $request->merge(['estado' => 'usando']);  // Agregamos el estado "usando" antes de crear la nueva dirección
             $direccion = DetalleDireccion::create($request->all());
-    
+        
             // Enviar correo de confirmación
             $correoUsuario = DB::table('usuarios')->where('idUsuario', $request->idUsuario)->value('correo');
             Mail::to($correoUsuario)->send(new NotificacionDireccionAgregada($direccion));
-    
+        
             return response()->json($direccion, 201);
         } catch (\Exception $e) {
             Log::error('Error al agregar dirección: ' . $e->getMessage());

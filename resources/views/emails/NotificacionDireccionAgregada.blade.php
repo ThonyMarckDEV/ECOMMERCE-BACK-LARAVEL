@@ -44,8 +44,9 @@
         <h1>Se ha agregado una nueva dirección</h1>
         <p>Has agregado la siguiente dirección:</p>
         
-        <p><strong class="highlight">Región:</strong> {{ $direccion->region }}</p>
+        <p><strong class="highlight">Departamento:</strong> {{ $direccion->departamento }}</p>
         <p><strong class="highlight">Provincia:</strong> {{ $direccion->provincia }}</p>
+        <p><strong class="highlight">Distrito:</strong> {{ $direccion->distrito }}</p>
         <p><strong class="highlight">Dirección completa:</strong> {{ $direccion->direccion }}</p>
         
         <p>Gracias por actualizar tus datos.</p>
