@@ -730,17 +730,18 @@ class ClienteController extends Controller
                     )
                     ->get();
 
-                // Obtener la dirección del pedido (corregido el join)
-                $direccion = DB::table('detalle_direccion_pedido')
-                ->where('idPedido', $pedido->idPedido)
-                ->join('detalle_direcciones', 'detalle_direccion_pedido.idDireccion', '=', 'detalle_direcciones.idDireccion') // Relación corregida aquí
-                ->select(
-                    'detalle_direcciones.departamento', // Cambiado de 'region' a 'departamento'
-                    'detalle_direcciones.provincia',
-                    'detalle_direcciones.distrito',
-                    'detalle_direcciones.direccion'
-                )
-                ->first();
+        
+                  // Obtener la dirección del pedido (corregido el join)
+                  $direccion = DB::table('pedidos')
+                  ->where('idPedido', $pedido->idPedido)
+                  ->select(
+                      'pedidos.departamento',
+                      'pedidos.provincia',
+                      'pedidos.distrito',
+                      'pedidos.direccion'
+                  )
+                  ->first();
+  
 
                 // Agregar los detalles y la dirección al pedido
                 $pedidosConDetallesYDireccion[] = [
