@@ -32,6 +32,7 @@ class CrearTablaUsuarios extends Migration
             $table->string('perfil')->nullable(); // Almacenar la ruta de la imagen
             $table->boolean('emailVerified')->default(false); // Campo para verificar el correo, por defecto false
             $table->string('verification_token', 60)->unique(); // Token único
+            $table->timestamp('fecha_creado')->useCurrent(); // Fecha de creación por defecto con CURRENT_TIMESTAMP
         });
     }
 
