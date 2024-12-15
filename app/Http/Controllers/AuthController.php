@@ -179,62 +179,131 @@ class AuthController extends Controller
            }
        }
 
-       public function verificarToken(Request $request)
-       {
-           try {
-               // Validar la solicitud
-               $request->validate([
-                   'token_veririficador' => 'required|string',
-               ]);
+    //    public function verificarToken(Request $request)
+    //    {
+    //        try {
+    //            // Validar la solicitud
+    //            $request->validate([
+    //                'token_veririficador' => 'required|string',
+    //            ]);
        
-               // Buscar usuario por el token de verificación
-               $usuario = Usuario::where('verification_token', $request->token_veririficador)->first();
+    //            // Buscar usuario por el token de verificación
+    //            $usuario = Usuario::where('verification_token', $request->token_veririficador)->first();
        
-               if (!$usuario) {
-                   return response()->json([
-                       'success' => false,
-                       'message' => 'Token no válido o ya utilizado.',
-                   ], 400);
-               }
+    //            if (!$usuario) {
+    //                return response()->json([
+    //                    'success' => false,
+    //                    'message' => 'Token no válido o ya utilizado.',
+    //                ], 400);
+    //            }
        
-               // Actualizar el estado de verificación
-               $usuario->emailVerified = true;
-               //$usuario->verification_token = null; // Eliminar el token después de usarlo
-               $usuario->save();
+    //            // Actualizar el estado de verificación
+    //            $usuario->emailVerified = true;
+    //            //$usuario->verification_token = null; // Eliminar el token después de usarlo
+    //            $usuario->save();
        
-               // Crear el JWT manualmente con los datos actualizados
-               $carrito = $usuario->carrito()->first(); // Obtener el carrito del usuario
+    //            // Crear el JWT manualmente con los datos actualizados
+    //            $carrito = $usuario->carrito()->first(); // Obtener el carrito del usuario
        
-               $payload = [
-                   'idUsuario' => $usuario->idUsuario,
-                   'dni' => $usuario->dni,
-                   'nombres' => $usuario->nombres,
-                   'username' => $usuario->username, // Agregar username al JWT
-                   'correo' => $usuario->correo,
-                   'estado' => $usuario->status, 
-                   'rol' => $usuario->rol,
-                   'perfil' => $usuario->perfil,
-                   'idCarrito' => $carrito ? $carrito->idCarrito : null, // Agregar idCarrito al JWT
-                   'emailVerified' => $usuario->emailVerified,
-               ];
+    //            $payload = [
+    //                'idUsuario' => $usuario->idUsuario,
+    //                'dni' => $usuario->dni,
+    //                'nombres' => $usuario->nombres,
+    //                'username' => $usuario->username, // Agregar username al JWT
+    //                'correo' => $usuario->correo,
+    //                'estado' => $usuario->status, 
+    //                'rol' => $usuario->rol,
+    //                'perfil' => $usuario->perfil,
+    //                'idCarrito' => $carrito ? $carrito->idCarrito : null, // Agregar idCarrito al JWT
+    //                'emailVerified' => $usuario->emailVerified,
+    //            ];
        
-               // Generar el token con los datos del usuario
-               $token = JWTAuth::fromUser($usuario); // Usar el JWTAuth para generar el nuevo token basado en el payload
+    //            // Generar el token con los datos del usuario
+    //            $token = JWTAuth::fromUser($usuario); // Usar el JWTAuth para generar el nuevo token basado en el payload
        
-               return response()->json([
-                   'success' => true,
-                   'message' => 'Correo verificado exitosamente.',
-                   'token' => $token,  // Devolver el nuevo token
-               ], 200);
-           } catch (Exception $e) {
-               Log::error('Error verificando el correo', ['error' => $e->getMessage()]);
+    //            return response()->json([
+    //                'success' => true,
+    //                'message' => 'Correo verificado exitosamente.',
+    //                'token' => $token,  // Devolver el nuevo token
+    //            ], 200);
+    //        } catch (Exception $e) {
+    //            Log::error('Error verificando el correo', ['error' => $e->getMessage()]);
        
-               return response()->json([
-                   'success' => false,
-                   'message' => 'Error al verificar el correo.',
-               ], 500);
-           }
-       }
+    //            return response()->json([
+    //                'success' => false,
+    //                'message' => 'Error al verificar el correo.',
+    //            ], 500);
+    //        }
+    //    }
+
+
+    public function verificarToken(Request $request)
+    {
+        try {
+            // Validar la solicitud
+            $request->validate([
+                'token_veririficador' => 'required|string',
+            ]);
+    
+            // Buscar usuario por el token de verificación
+            $usuario = Usuario::where('verification_token', $request->token_veririficador)->first();
+    
+            if (!$usuario) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token no válido o ya utilizado.',
+                ], 400);
+            }
+    
+            // Actualizar el estado de verificación
+            $usuario->emailVerified = true;
+           // $usuario->verification_token = null; // Eliminar el token después de usarlo
+            $usuario->save();
+    
+            // Comprobamos si hay un token en la solicitud para determinar si está logueado
+            // Si no hay token, no se genera un nuevo JWT
+            if (!$request->header('Authorization')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Correo verificado exitosamente.',
+                    'token' => null,  // No generar token si no está autenticado
+                ], 200);
+            }
+    
+            // Si está autenticado, generar el JWT
+            $carrito = $usuario->carrito()->first(); // Obtener el carrito del usuario
+    
+            $payload = [
+                'idUsuario' => $usuario->idUsuario,
+                'dni' => $usuario->dni,
+                'nombres' => $usuario->nombres,
+                'username' => $usuario->username,
+                'correo' => $usuario->correo,
+                'estado' => $usuario->status,
+                'rol' => $usuario->rol,
+                'perfil' => $usuario->perfil,
+                'idCarrito' => $carrito ? $carrito->idCarrito : null,
+                'emailVerified' => $usuario->emailVerified,
+            ];
+    
+            // Generar el token con los datos del usuario
+            $token = JWTAuth::fromUser($usuario);
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Correo verificado exitosamente.',
+                'token' => $token,
+            ], 200);
+    
+        } catch (Exception $e) {
+            Log::error('Error verificando el correo', ['error' => $e->getMessage()]);
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al verificar el correo.',
+            ], 500);
+        }
+    }
 
 
     /**
