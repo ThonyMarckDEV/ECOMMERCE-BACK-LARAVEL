@@ -66,61 +66,73 @@ class AuthController extends Controller
         }
     }
 
-       // FUNCION PARA REGISTRAR UN USUARIO
-       public function registerUser(Request $request)
-       {
-           $messages = [
-               'username.required' => 'El nombre de usuario es obligatorio.',
-               'username.unique' => 'El nombre de usuario ya está en uso.',
-               'rol.required' => 'El rol es obligatorio.',
-               'nombres.required' => 'El nombre es obligatorio.',
-               'apellidos.required' => 'Los apellidos son obligatorios.',
-               'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
-               'dni.required' => 'El DNI es obligatorio.',
-               'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
-               'dni.unique' => 'El DNI ya está registrado.',
-               'correo.required' => 'El correo es obligatorio.',
-               'correo.email' => 'El correo debe tener un formato válido.',
-               'correo.unique' => 'El correo ya está registrado.',
-               'edad.integer' => 'La edad debe ser un número entero.',
-               'edad.between' => 'La edad debe ser mayor a 18.',
-               'nacimiento.date' => 'La fecha de nacimiento debe ser una fecha válida.',
-               'nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
-               'password.required' => 'La contraseña es obligatoria.',
-               'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-               'password.regex' => 'La contraseña debe incluir al menos una mayúscula y un símbolo.',
-               'password.confirmed' => 'Las contraseñas no coinciden.',
-           ];
-       
-           $validator = Validator::make($request->all(), [
-               'username' => 'required|string|max:255|unique:usuarios',
-               'rol' => 'required|string|max:255',
-               'nombres' => 'required|string|max:255',
-               'apellidos' => [
-                   'required',  
-                   'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
-               ],
-               'dni' => 'required|string|size:8|unique:usuarios',
-               'correo' => 'required|string|email|max:255|unique:usuarios',
-               'edad' => 'nullable|integer|between:18,100',
-               'nacimiento' => 'nullable|date|before:today',
-               'telefono' => 'nullable|string|size:9|regex:/^\d{9}$/',
-               'departamento' => 'nullable|string|max:255',
-              'password' => [
+     // FUNCION PARA REGISTRAR UN USUARIO
+        public function registerUser(Request $request)
+        {
+            $messages = [
+                'username.required' => 'El nombre de usuario es obligatorio.',
+                'username.unique' => 'El nombre de usuario ya está en uso.',
+                'rol.required' => 'El rol es obligatorio.',
+                'nombres.required' => 'El nombre es obligatorio.',
+                'apellidos.required' => 'Los apellidos son obligatorios.',
+                'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
+                'dni.required' => 'El DNI es obligatorio.',
+                'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
+                'dni.unique' => 'El DNI ya está registrado.',
+                'correo.required' => 'El correo es obligatorio.',
+                'correo.email' => 'El correo debe tener un formato válido.',
+                'correo.unique' => 'El correo ya está registrado.',
+                'edad.integer' => 'La edad debe ser un número entero.',
+                'edad.between' => 'La edad debe ser mayor a 18.',
+                'nacimiento.date' => 'La fecha de nacimiento debe ser una fecha válida.',
+                'nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
+                'password.required' => 'La contraseña es obligatoria.',
+                'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+                'password.regex' => 'La contraseña debe incluir al menos una mayúscula y un símbolo.',
+                'password.confirmed' => 'Las contraseñas no coinciden.',
+            ];
+
+            $validator = Validator::make($request->all(), [
+                'username' => 'required|string|max:255|unique:usuarios',
+                'rol' => 'required|string|max:255',
+                'nombres' => 'required|string|max:255',
+                'apellidos' => [
+                    'required',  
+                    'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
+                ],
+                'dni' => 'required|string|size:8|unique:usuarios',
+                'correo' => 'required|string|email|max:255|unique:usuarios',
+                'edad' => 'nullable|integer|between:18,100',
+                'nacimiento' => 'nullable|date|before:today',
+                'telefono' => 'nullable|string|size:9|regex:/^\d{9}$/',
+                'departamento' => 'nullable|string|max:255',
+                'password' => [
                     'required',
                     'string',
                     'min:8',
                     'max:255',
                     'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_])[A-Za-z\d!@#$%^&*(),.?":{}|<>_]{8,}$/',
                 ]
-           ], $messages);
-       
-           if ($validator->fails()) {
-               return response()->json([
-                   'success' => false,
-                   'errors' => $validator->errors(),
-               ], 400);
-           }
+            ], $messages);
+
+            if ($validator->fails()) {
+               // return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            // Verificar si el nombre de usuario, correo o DNI ya están en uso
+            $existingUser = Usuario::where('username', $request->username)
+                                ->orWhere('correo', $request->correo)
+                                ->orWhere('dni', $request->dni)
+                                ->first();
+
+            if ($existingUser) {
+                return response()->json([
+                    'errors' => [
+                        'correo' => 'El correo ya está registrado.',
+                        'dni' => 'El DNI ya está registrado.'
+                    ]
+                ], 409);
+            }
        
            try {
                // Registrar el usuario
@@ -139,9 +151,9 @@ class AuthController extends Controller
                    'status' => 'loggedOff',
                    'verification_token' => Str::random(60), // Genera un token único
                ]);
-
+              // https://ecommerce-front-react.vercel.app
                 // URL para verificar el correo
-                $verificationUrl = "https://ecommerce-front-react.vercel.app/verificar-correo?token={$user->verification_token}";
+                $verificationUrl = "http://localhost:3000/verificar-correo-token?token={$user->verification_token}";
 
                 // Enviar el correo
                 Mail::to($user->correo)->send(new VerificarCorreo($user, $verificationUrl));
@@ -153,8 +165,8 @@ class AuthController extends Controller
        
                // Devolver respuesta con éxito
                return response()->json([
-                   'emailVerified' => true,
-                   'message' => 'Usuario registrado y carrito creado exitosament, Verifica tu correo.',
+                   'success' => true,
+                   'message' => 'Usuario registrado y carrito creado exitosamente, Verifica tu correo.',
                ], 201);
        
            } catch (\Exception $e) {
@@ -178,15 +190,15 @@ class AuthController extends Controller
             // Buscar usuario por el token
             $usuario = Usuario::where('verification_token', $request->token)->first();
 
-            if (!$usuario) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token no válido o ya utilizado.',
-                ], 400);
-            }
+            // if (!$usuario) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Token no válido o ya utilizado.',
+            //     ], 400);
+            // }
 
             // Actualizar el estado de verificación
-            $usuario->email_verified = true;
+            $usuario->emailVerified = true;
             $usuario->verification_token = null; // Eliminar el token después de usarlo
             $usuario->save();
 
