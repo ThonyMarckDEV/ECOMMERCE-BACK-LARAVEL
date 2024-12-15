@@ -42,6 +42,7 @@ use App\Http\Controllers\AuthController;
         // Ruta para verificar el token de correo
         Route::post('verificar-token', [AuthController::class, 'verificarToken']);
         
+        Route::get('/status-mantenimiento', [AuthController::class, 'getStatus']);
 //================================================================================================
 
 

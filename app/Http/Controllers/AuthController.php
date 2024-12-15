@@ -18,6 +18,7 @@ use App\Mail\VerificarCorreo;
 use Illuminate\Support\Str;
 use Exception;
 use App\Mail\CuentaVerificada;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -485,6 +486,24 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'No autorizado para cambiar la contraseña'], 403);
+    }
+
+    public function getStatus()
+    {
+        // Consulta directa a la tabla "mantenimiento"
+        $mantenimiento = DB::select('SELECT estado, mensaje FROM mantenimiento LIMIT 1');
+    
+        if (!empty($mantenimiento)) {
+            return response()->json([
+                'estado' => $mantenimiento[0]->estado,
+                'mensaje' => $mantenimiento[0]->mensaje
+            ], 200);
+        }
+    
+        return response()->json([
+            'estado' => 0,
+            'mensaje' => 'No se pudo obtener el estado de mantenimiento'
+        ], 404);
     }
 
 }
