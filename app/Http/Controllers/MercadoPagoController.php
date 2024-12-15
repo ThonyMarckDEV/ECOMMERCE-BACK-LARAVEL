@@ -2,102 +2,122 @@
 
 namespace App\Http\Controllers;
 
-
 use Illuminate\Http\Request;
-use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\Preference\PreferenceClient;
-use App\Models\Pedido;
 use App\Models\Pago;
-use App\Models\Usuario;
+use App\Models\Pedido;
 use App\Models\Producto;
-use App\Mail\NotificacionPagoCompletado;
-use Illuminate\Support\Facades\Mail;
-use FPDF;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
+use App\Models\Usuario;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NotificacionPagoCompletado;
+use FPDF;
 
+// Mercado Pago
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\Resources\MerchantOrder\Item;
 
-class PaymentController extends Controller
+class MercadoPagoController extends Controller
 {
-
-
     public function __construct()
     {
-        // Agrega las credenciales de MercadoPago
-        MercadoPagoConfig::setAccessToken(env('MERCADOPAGO_ACCESS_TOKEN'));
+        Log::info('Inicializando configuración de MercadoPago');
+        MercadoPagoConfig::setAccessToken(env('MP_ACCESS_TOKEN'));
     }
 
     public function createPreference(Request $request)
     {
-        // Validar los datos recibidos
+        Log::info('Iniciando la creación de preferencia con MercadoPago', ['data' => $request->all()]);
         $request->validate([
             'idPedido' => 'required|integer',
             'detalles' => 'required|array',
-            'total' => 'required|numeric',
-            'correo' => 'required|email'
+            'total' => 'required|numeric'
         ]);
-        
-        // Obtener los datos del request
+
         $idPedido = $request->input('idPedido');
         $detalles = $request->input('detalles');
         $total = $request->input('total');
-       // $correo = $request->input('correo');
-        
-        // Crear una instancia del cliente de preferencias de MercadoPago
-        $client = new PreferenceClient();
-    
-        $currentUrlBase = 'https://ecommerce-front-react.vercel.app'; // DOMINIO DEL FRONT
-    
-        // URLs de retorno
+
+        Log::info('Datos validados correctamente', ['idPedido' => $idPedido, 'total' => $total]);
+
+        $currentUrlBase = 'https://ecommerce-front-react.vercel.app';
         $backUrls = [
             "success" => "{$currentUrlBase}/pedidos?status=approved&external_reference={$idPedido}&payment_type=online",
             "failure" => "{$currentUrlBase}/pedidos?status=failure&external_reference={$idPedido}",
             "pending" => "{$currentUrlBase}/pedidos?status=pending&external_reference={$idPedido}"
         ];
-    
-        // Crear los ítems a partir de los detalles del pedido
+
         $items = [];
         foreach ($detalles as $detalle) {
-            $items[] = [
-                "id" => $detalle['idProducto'],
-                "title" => $detalle['nombreProducto'],
-                "quantity" => (int)$detalle['cantidad'],
-                "unit_price" => (float)$detalle['precioUnitario'],
-                "currency_id" => "PEN" // Ajusta según tu moneda
-            ];
+            Log::info('Procesando detalle del pedido', ['detalle' => $detalle]);
+            $item = new Item();
+            $item->id = $detalle['idProducto'];
+            $item->title = $detalle['nombreProducto'];
+            $item->quantity = (int)$detalle['cantidad'];
+            $item->unit_price = (float)$detalle['precioUnitario'];
+            $item->currency_id = "PEN";
+            $items[] = $item;
         }
-    
-        // Configurar la preferencia con los datos necesarios
-        $preferenceData = [
+
+        $preferenceClient = new PreferenceClient();
+        $preference = [
             "items" => $items,
-            "payer" => [
-               // "email" => $correo
-            ],
             "back_urls" => $backUrls,
-            "auto_return" => "approved", // Automáticamente vuelve al front-end cuando el pago es aprobado
-            "binary_mode" => true, // Usar modo binario para más seguridad
+            "auto_return" => "approved",
             "external_reference" => $idPedido
         ];
-    
+
         try {
-            // Crear la preferencia en MercadoPago
-            $preference = $client->create($preferenceData);
-    
-            // Verificar si se creó la preferencia correctamente
-            if (isset($preference->id)) {
-                // Responder con el punto de inicio del pago
+            Log::info('Iniciando proceso para crear preferencia en MercadoPago', [
+                'request_data' => [
+                    'idPedido' => $preference['external_reference'] ?? null,
+                    'items' => $preference['items'] ?? [],
+                    'back_urls' => $preference['back_urls'] ?? []
+                ]
+            ]);
+        
+            Log::info('Enviando preferencia a la API de MercadoPago', ['preference' => $preference]);
+            $response = $preferenceClient->create($preference);
+        
+            // Log para capturar la respuesta completa
+            Log::info('Respuesta de la API de MercadoPago', ['response' => $response]);
+        
+            if (isset($response->id)) {
+                Log::info('Preferencia creada exitosamente', [
+                    'preference_id' => $response->id,
+                    'init_point' => $response->init_point
+                ]);
                 return response()->json([
                     'success' => true,
-                    'init_point' => $preference->init_point,
-                    'preference_id' => $preference->id // Para el modal
+                    'init_point' => $response->init_point,
+                    'preference_id' => $response->id
                 ]);
             } else {
+                Log::warning('No se recibió un ID de preferencia en la respuesta de MercadoPago', [
+                    'response' => $response,
+                    'status' => $response->status ?? null
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Error al crear la preferencia en MercadoPago'
                 ]);
             }
+        } catch (\MercadoPago\Exceptions\MPApiException $e) {
+            Log::error('Error en la API de MercadoPago', [
+                'error_message' => $e->getMessage(),
+                'error_response' => $e->getApiResponse()->getContent()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la preferencia: ' . $e->getApiResponse()->getContent()
+            ]);
         } catch (\Exception $e) {
+            Log::error('Error inesperado al crear la preferencia', [
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear la preferencia: ' . $e->getMessage()
@@ -105,89 +125,79 @@ class PaymentController extends Controller
         }
     }
 
-
+   
     public function recibirPago(Request $request)
     {
+        Log::info('Recibiendo webhook de MercadoPago', ['request_data' => $request->all()]);
+
         try {
-            // // Log inicial
-            // Log::info('Headers recibidos:', $request->headers->all());
-            // Log::info('Webhook recibido:', $request->all());
-    
-            // Obtener el ID del pago desde el request
             $id = $request->input('data')['id'] ?? null;
             $type = $request->input('type') ?? null;
-    
-           // Log::info("ID del pago recibido: {$id}, Tipo: {$type}");
-    
-            // Validar que el ID y el tipo estén presentes
+
             if (!$id || $type !== 'payment') {
-                Log::warning('ID del pago o tipo no válido.');
-                return response()->json(['error' => 'ID del pago o tipo no válido'], 400);
+                Log::warning('Datos inválidos en el webhook', ['id' => $id, 'type' => $type]);
+                return response()->json(['error' => 'Datos inválidos'], 400);
             }
-    
-            // URL de la API de Mercado Pago
+
             $url = "https://api.mercadopago.com/v1/payments/{$id}";
-           // Log::info("URL para consultar el pago: {$url}");
-    
-            // Solicitar el pago a la API de Mercado Pago
+            Log::info("Consultando pago en MercadoPago", ['url' => $url]);
+
             $client = new Client();
             $response = $client->request('GET', $url, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . env('MERCADOPAGO_ACCESS_TOKEN'),
-                ],
+                'headers' => ['Authorization' => 'Bearer ' . env('MP_ACCESS_TOKEN')],
             ]);
             $pago = json_decode($response->getBody(), true);
-    
-           // Log::info('Respuesta obtenida de Mercado Pago:', $pago);
-    
-            // Verificar estado del pago
+
+            Log::info('Respuesta de MercadoPago', ['pago' => $pago]);
+
+            // Verificación de estado del pago
             $estado_pago = $pago['status'];
             $metodo_pago = $pago['payment_method_id'] ?? null;
             $externalReference = $pago['external_reference'];
-    
-           // Log::info("Estado del pago: {$estado_pago}, Método de pago: {$metodo_pago}, Referencia externa: {$externalReference}");
-    
-            // Buscar el pago asociado al pedido
+
+            Log::info("Estado del pago recibido", [
+                'estado_pago' => $estado_pago,
+                'metodo_pago' => $metodo_pago,
+                'external_reference' => $externalReference
+            ]);
+
+            // Consultar el modelo Pago
             $pagoModel = Pago::where('idPedido', $externalReference)->first();
-    
             if (!$pagoModel) {
-              //  Log::warning("Pago no encontrado para el pedido con referencia {$externalReference}.");
-                return response()->json(['success' => false, 'message' => 'Pago no encontrado para este pedido'],200);
+                Log::warning("Pago no encontrado para el pedido", ['external_reference' => $externalReference]);
+                return response()->json(['success' => false, 'message' => 'Pago no encontrado para este pedido'], 200);
             }
-    
+
             if ($pagoModel->estado_pago === 'completado') {
-               // Log::warning("El pago con ID {$id} ya ha sido completado previamente.");
-                return response()->json(['success' => false, 'message' => 'Este pago ya ha sido completado previamente'],200);
+                Log::warning("El pago ya ha sido completado previamente", ['id' => $id]);
+                return response()->json(['success' => false, 'message' => 'Este pago ya ha sido completado previamente'], 200);
             }
-    
-            // Actualizar el estado del pago a "completado"
+
+            // Actualización de estado de pago
             $pagoModel->estado_pago = 'completado';
             if ($metodo_pago) {
                 $pagoModel->metodo_pago = $metodo_pago;
             }
             $pagoModel->save();
-    
-            // Buscar el pedido asociado
+
+            // Consultar el pedido
             $pedido = Pedido::with('detalles')->find($externalReference);
-    
             if (!$pedido) {
-               // Log::warning("Pedido con referencia {$externalReference} no encontrado.");
+                Log::warning("Pedido no encontrado", ['external_reference' => $externalReference]);
                 return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
             }
-    
-            // Actualizar el estado del pedido a "aprobando"
+
+            // Actualizar estado del pedido
             if ($estado_pago === 'approved') {
                 if (in_array($pedido->estado, ['aprobando', 'completado'])) {
-                  //  Log::warning("El pedido con referencia {$externalReference} ya fue procesado previamente.");
+                    Log::warning("El pedido ya fue procesado previamente", ['external_reference' => $externalReference]);
                     return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
                 }
-    
+
                 $pedido->estado = 'aprobando';
                 $pedido->save();
-    
-             //   Log::info("Pedido {$externalReference} actualizado a 'aprobando'.");
-    
-                // Descontar el stock de productos
+
+                // Descontar stock de productos
                 foreach ($pedido->detalles as $detalle) {
                     $producto = Producto::find($detalle->idProducto);
                     if ($producto) {
@@ -195,12 +205,11 @@ class PaymentController extends Controller
                         $producto->save();
                     }
                 }
-    
-               // Generar boleta y enviar correo
+
+                // Generar boleta y enviar correo
                 $usuario = Usuario::find($pedido->idUsuario);
                 if ($usuario) {
                     $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
-
                     $detallesPedido = [];
                     $total = 0;
 
@@ -214,36 +223,38 @@ class PaymentController extends Controller
                         $total += $detalle->subtotal;
                     }
 
-                    // Ruta para guardar la boleta
+                    // Generación de boleta
                     $pdfDirectory = "boletas/{$usuario->idUsuario}/{$externalReference}";
                     $pdfFileName = "boleta_pedido_{$externalReference}.pdf";
                     $pdfPath = public_path("{$pdfDirectory}/{$pdfFileName}");
 
-                    // Crear el directorio si no existe
                     if (!file_exists(public_path($pdfDirectory))) {
                         mkdir(public_path($pdfDirectory), 0755, true);
                     }
-                    
-                    // Generar el PDF
+
+                    // Generar PDF de la boleta
                     $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
 
-                    // Enviar el correo con la boleta adjunta
+                    // Enviar correo
                     Mail::to($usuario->correo)->send(new NotificacionPagoCompletado(
                         $nombreCompleto,
                         $detallesPedido,
                         $total,
                         $pdfPath
                     ));
+
+                    Log::info("Boleta generada y correo enviado", ['usuario' => $usuario->correo, 'pdf_path' => $pdfPath]);
                 }
             }
-    
-            //Log::info("Estado de pago y pedido actualizados correctamente para el ID {$id}.");
-            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'],200);
+
+            Log::info("Estado de pago y pedido actualizado correctamente", ['id' => $id]);
+            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'], 200);
         } catch (\Exception $e) {
-           // Log::error('Error al procesar el webhook: ' . $e->getMessage());
+            Log::error('Error al procesar el webhook de pago', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
     }
+
 
     private function generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total)
     {
@@ -275,12 +286,4 @@ class PaymentController extends Controller
         // Guardar el PDF en la ruta especificada
         $pdf->Output('F', $pdfPath);
     }
-
 }
-
-
-
-
-
-
-

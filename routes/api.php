@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
