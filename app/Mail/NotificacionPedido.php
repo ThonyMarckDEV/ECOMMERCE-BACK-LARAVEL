@@ -32,7 +32,7 @@ class NotificacionPedido extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmación de Pedido - CpuraWeb'
+            subject: 'Confirmación de Pedido - ECOMMERCE'
         );
     }
 

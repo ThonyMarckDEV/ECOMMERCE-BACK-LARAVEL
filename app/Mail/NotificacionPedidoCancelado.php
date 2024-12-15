@@ -6,7 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class NotificacionPedidoEliminado extends Mailable
+class NotificacionPedidoCancelado extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -21,7 +21,7 @@ class NotificacionPedidoEliminado extends Mailable
 
     public function build()
     {
-        return $this->view('emails.notificacionPedidoEliminado')
-                    ->subject('Su Pedido ha sido Eliminado');
+        return $this->view('emails.notificacionPedidoCancelado')
+                    ->subject('Su Pedido ha sido Cancelado');
     }
 }

@@ -15,7 +15,7 @@ class Usuario extends Authenticatable implements JWTSubject
     public $timestamps = false;
 
     protected $fillable = [
-        'username', 'rol', 'nombres', 'apellidos', 'dni', 'correo', 'edad', 'nacimiento', 'sexo', 'direccion', 'telefono', 'departamento', 'password', 'status', 'perfil',
+        'username', 'rol', 'nombres', 'apellidos', 'dni', 'correo', 'edad', 'nacimiento', 'sexo', 'direccion', 'telefono', 'departamento', 'password', 'status', 'perfil','emailVerified','verification_token',
     ];
 
     protected $hidden = ['password'];
@@ -43,6 +43,7 @@ class Usuario extends Authenticatable implements JWTSubject
             'rol' => $this->rol,
             'perfil' => $this->perfil,
             'idCarrito' => $carrito ? $carrito->idCarrito : null, // Agrega idCarrito al JWT
+            'emailVerified'=> $this->emailVerified
         ];
     }
     // Relación con ActividadUsuario

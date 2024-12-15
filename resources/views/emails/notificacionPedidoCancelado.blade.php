@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Dirección Agregada</title>
+    <title>Notificación de Pedido Cancelado</title>
     <style>
         body {
             background-color: #000000;
@@ -41,15 +41,10 @@
 <body>
 
     <div class="container">
-        <h1>Se ha agregado una nueva dirección</h1>
-        <p>Has agregado la siguiente dirección:</p>
-        
-        <p><strong class="highlight">Región:</strong> {{ $direccion->region }}</p>
-        <p><strong class="highlight">Provincia:</strong> {{ $direccion->provincia }}</p>
-        <p><strong class="highlight">Dirección completa:</strong> {{ $direccion->direccion }}</p>
-        
-        <p>Gracias por actualizar tus datos.</p>
-
+        <h1>Su pedido ha sido cancelado con exito!!</h1>
+        <p>Estimado <span class="highlight">{{ $nombreCompleto }}</span>,</p>
+        <p>Su pedido con ID <strong class="highlight">{{ $idPedido }}</strong> ha sido cancelado satisfactoriamente.</p>
+  
         <p class="footer">Saludos,<br>El equipo de ECOMMERCE</p>
     </div>
 

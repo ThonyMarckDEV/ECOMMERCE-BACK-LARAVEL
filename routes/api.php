@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
 //RUTAS
-
 //================================================================================================
         //RUTAS  AUTH
 
@@ -39,6 +38,9 @@ use App\Http\Controllers\AuthController;
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
+
+        // Ruta para verificar el token de correo
+        Route::post('verificar-token', [AuthController::class, 'verificarToken']);
         
 //================================================================================================
 

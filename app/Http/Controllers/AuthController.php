@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Carrito;
+use App\Mail\VerificarCorreo;
+use Illuminate\Support\Str;
+use Exception;
 
 class AuthController extends Controller
 {
@@ -134,8 +137,15 @@ class AuthController extends Controller
                    'departamento' => $request->departamento ?? null,
                    'password' => bcrypt($request->password),
                    'status' => 'loggedOff',
+                   'verification_token' => Str::random(60), // Genera un token único
                ]);
-       
+
+                // URL para verificar el correo
+                $verificationUrl = "https://ecommerce-front-react.vercel.app/verificar-correo?token={$user->verification_token}";
+
+                // Enviar el correo
+                Mail::to($user->correo)->send(new VerificarCorreo($user, $verificationUrl));
+                
                // Crear el carrito asociado al usuario
                $carrito = new Carrito();
                $carrito->idUsuario = $user->idUsuario; // Asignar el idUsuario al carrito
@@ -143,8 +153,8 @@ class AuthController extends Controller
        
                // Devolver respuesta con éxito
                return response()->json([
-                   'success' => true,
-                   'message' => 'Usuario registrado y carrito creado exitosamente',
+                   'emailVerified' => true,
+                   'message' => 'Usuario registrado y carrito creado exitosament, Verifica tu correo.',
                ], 201);
        
            } catch (\Exception $e) {
@@ -156,6 +166,43 @@ class AuthController extends Controller
            }
        }
 
+        // Función para verificar el token de correo
+    public function verificarToken(Request $request)
+    {
+        try {
+            // Validar la solicitud
+            $request->validate([
+                'token' => 'required|string',
+            ]);
+
+            // Buscar usuario por el token
+            $usuario = Usuario::where('verification_token', $request->token)->first();
+
+            if (!$usuario) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token no válido o ya utilizado.',
+                ], 400);
+            }
+
+            // Actualizar el estado de verificación
+            $usuario->email_verified = true;
+            $usuario->verification_token = null; // Eliminar el token después de usarlo
+            $usuario->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Correo verificado exitosamente.',
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Error verificando el correo', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al verificar el correo.',
+            ], 500);
+        }
+    }
 
     /**
      * Logout del usuario y revocación del token JWT.

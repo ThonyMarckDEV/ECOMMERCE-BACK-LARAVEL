@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use App\Mail\NotificacionCrearCuenta;
 use App\Mail\NotificacionActualizarCorreo;
 use App\Mail\NotificacionPedido;
+use App\Mail\NotificacionPedidoCancelado;
 use App\Mail\NotificacionPagoProcesado;
 use App\Mail\NotificacionDireccionAgregada;
 use App\Mail\NotificacionDireccionEliminada;
@@ -1051,27 +1052,36 @@ class ClienteController extends Controller
     public function cancelarPedido(Request $request)
     {
         $idPedido = $request->input('idPedido');
-
+    
         // Validar que el ID esté presente
         if (!$idPedido) {
             return response()->json(['error' => 'ID de pedido no proporcionado'], 400);
         }
-
+    
         // Buscar el pedido en la base de datos
         $pedido = Pedido::find($idPedido);
-
+    
         if (!$pedido) {
             return response()->json(['error' => 'Pedido no encontrado'], 404);
         }
-
+    
         // Verificar si el estado es "pendiente"
         if ($pedido->estado !== 'pendiente') {
             return response()->json(['error' => 'Solo se pueden cancelar pedidos pendientes'], 400);
         }
-
+    
+        // Obtener el usuario asociado al pedido
+        $usuario = $pedido->usuario; // Asumimos que 'usuario' es la relación en el modelo Pedido
+    
+        // Concatenar el nombre y apellido del usuario
+        $nombreCompleto = $usuario->nombres . ' ' . $usuario->apellidos;
+    
         // Eliminar el pedido
         $pedido->delete();
-
+    
+        // Enviar el correo electrónico con los detalles
+        Mail::to($usuario->correo)->send(new NotificacionPedidoCancelado($nombreCompleto, $pedido->idPedido));
+    
         return response()->json(['message' => 'Pedido cancelado exitosamente'], 200);
     }
 
