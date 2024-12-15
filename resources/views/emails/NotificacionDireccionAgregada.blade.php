@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva Dirección Agregada</title>
     <style>
+        body, p, h1, .footer {
+            color: #ffffff !important; /* Asegura que todo el texto sea blanco */
+            font-family: sans-serif;
+        }
         body {
             background-color: #000000;
-            color: #ffffff;
-            font-family: sans-serif;
         }
         .container {
             max-width: 672px;
@@ -29,7 +31,7 @@
             margin-bottom: 16px;
         }
         .highlight {
-            color: #34d399; /* green-400 */
+            color: #34d399; /* Verde para destacar */
         }
         .footer {
             font-size: 12px;

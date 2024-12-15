@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificación de Correo</title>
+    <title>Cuenta Verificada</title>
     <style>
         body, p, h1, .footer {
             color: #ffffff !important; /* Asegura que todo el texto sea blanco */
@@ -50,12 +50,11 @@
 <body>
 
     <div class="container">
-        <h1>¡Hola, {{ $user->nombres }}!</h1>
-        <p>Gracias por registrarte en nuestra plataforma. Por favor, haz clic en el botón de abajo para verificar tu correo electrónico:</p>
-        <a href="{{ $url }}">
-            Verificar correo
-        </a>
-        <p>Si no solicitaste esta verificación, ignora este correo.</p>
+        <h1>Cuenta Verificada</h1>
+        <p>¡Hola, {{ $usuario->nombres }}!</p>
+        <p>Tu correo ha sido verificado exitosamente. Ahora puedes acceder a todas las funcionalidades de tu cuenta.</p>
+
+        <p>Gracias por registrarte en nuestro sitio.</p>
 
         <p class="footer">Saludos,<br>El equipo de ECOMMERCE</p>
     </div>

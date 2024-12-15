@@ -17,6 +17,7 @@ use App\Models\Carrito;
 use App\Mail\VerificarCorreo;
 use Illuminate\Support\Str;
 use Exception;
+use App\Mail\CuentaVerificada;
 
 class AuthController extends Controller
 {
@@ -202,6 +203,9 @@ class AuthController extends Controller
             $usuario->emailVerified = true;
            // $usuario->verification_token = null; // Eliminar el token después de usarlo
             $usuario->save();
+
+            // Enviar notificación de cuenta verificada
+            Mail::to($usuario->correo)->send(new CuentaVerificada($usuario));
     
             // Comprobamos si hay un token en la solicitud para determinar si está logueado
             // Si no hay token, no se genera un nuevo JWT

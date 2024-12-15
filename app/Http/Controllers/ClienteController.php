@@ -960,18 +960,18 @@ class ClienteController extends Controller
     public function eliminarDireccion($idDireccion)
     {
         try {
-            $estadoRestringido = DB::table('detalle_direccion_pedido')
-                ->join('pedidos', 'detalle_direccion_pedido.idPedido', '=', 'pedidos.idPedido')
-                ->where('detalle_direccion_pedido.idDireccion', $idDireccion)
-                ->whereIn('pedidos.estado', ['pendiente', 'aprobando', 'en preparacion', 'enviado'])
-                ->exists();
+            // $estadoRestringido = DB::table('detalle_direccion_pedido')
+            //     ->join('pedidos', 'detalle_direccion_pedido.idPedido', '=', 'pedidos.idPedido')
+            //     ->where('detalle_direccion_pedido.idDireccion', $idDireccion)
+            //     ->whereIn('pedidos.estado', ['pendiente', 'aprobando', 'en preparacion', 'enviado'])
+            //     ->exists();
 
-            if ($estadoRestringido) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar la dirección: existen pedidos en proceso con esta dirección asignada.',
-                ], 400);
-            }
+            // if ($estadoRestringido) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'No se puede eliminar la dirección: existen pedidos en proceso con esta dirección asignada.',
+            //     ], 400);
+            // }
 
             // Obtener los datos de la dirección antes de eliminarla
             $direccion = DB::table('detalle_direcciones')->where('idDireccion', $idDireccion)->first();
