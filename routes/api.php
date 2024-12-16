@@ -14,8 +14,13 @@ use App\Http\Controllers\AuthController;
 
         //RUTA PARA QUE LOS USUAIOS SE LOGEEN POR EL CONTROLLADOR AUTHCONTROLLER
         Route::post('login', [AuthController::class, 'login']);
+
+        // Ruta para el login con Google
+        Route::post('/login-google', [AuthController::class, 'loginWithGoogle']);
         
         Route::post('/registerUser', [AuthController::class, 'registerUser']);
+
+        Route::post('/registerUserGoogle', [AuthController::class, 'registerUserGoogle']);
 
         Route::post('logout', [AuthController::class, 'logout']);
 

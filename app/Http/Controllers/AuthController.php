@@ -19,6 +19,9 @@ use Illuminate\Support\Str;
 use Exception;
 use App\Mail\CuentaVerificada;
 use Illuminate\Support\Facades\DB;
+use Google_Client;
+use Laravel\Socialite\Facades\Socialite;
+
 
 class AuthController extends Controller
 {
@@ -65,6 +68,78 @@ class AuthController extends Controller
             return response()->json(compact('token'));
         } catch (JWTException $e) {
             return response()->json(['error' => 'No se pudo crear el token'], 500);
+        }
+    }
+
+        /**
+     * Login de usuario con Google y generación de token JWT.
+     */
+    public function loginWithGoogle(Request $request)
+    {
+        // Validar que el token de Google esté presente
+        $request->validate([
+            'googleToken' => 'required|string',
+        ]);
+
+        try {
+            // Verificar el token de Google y obtener los datos del usuario
+            $googleToken = $request->input('googleToken');
+            $googleUser = $this->getGoogleUser($googleToken);
+
+            if (!$googleUser) {
+                return response()->json(['error' => 'Token de Google inválido o expirado'], 401);
+            }
+
+            // Verificar si el usuario ya existe en la base de datos
+            $usuario = Usuario::where('correo', $googleUser['email'])->first();
+
+            if (!$usuario) {
+                // Si el usuario no existe, crear uno nuevo
+                $usuario = Usuario::create([
+                    'correo' => $googleUser['email'],
+                    'nombre' => $googleUser['given_name'],
+                    'apellidos' => $googleUser['family_name'],
+                    'status' => 'loggedOn',
+                ]);
+            }
+
+            // Si el usuario está registrado, pero no está logueado, actualizar su estado
+            if ($usuario->status !== 'loggedOn') {
+                $usuario->update(['status' => 'loggedOn']);
+            }
+
+            // Generar el token JWT para el usuario
+            $token = JWTAuth::fromUser($usuario);
+
+            return response()->json(compact('token'));
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error en el inicio de sesión con Google'], 500);
+        }
+    }
+
+    /**
+     * Función para verificar el token de Google
+     */
+    private function getGoogleUser($token)
+    {
+        try {
+            // Verificar el token con la API de Google
+            $client = new \Google_Client(['client_id' => env('GOOGLE_CLIENT_ID')]); // Debes configurar tu client_id
+            $payload = $client->verifyIdToken($token);
+
+            // Si el token es válido, devolver los datos del usuario
+            if ($payload) {
+                return [
+                    'email' => $payload['email'],
+                    'given_name' => $payload['given_name'],
+                    'family_name' => $payload['family_name'],
+                ];
+            }
+
+            return null; // Si el token no es válido
+        } catch (\Exception $e) {
+            return null;
         }
     }
 
@@ -181,6 +256,60 @@ class AuthController extends Controller
            }
        }
 
+       public function registerUserGoogle(Request $request)
+       {
+           $googleClient = new Google_Client();
+           $googleClient->setClientId(env('GOOGLE_CLIENT_ID'));
+       
+           try {
+               // Verificar el token de Google
+               $payload = $googleClient->verifyIdToken($request->googleToken);
+               
+               if ($payload) {
+                   // Crear o actualizar el usuario
+                   $user = Usuario::firstOrCreate([
+                       'correo' => $payload['email'],
+                   ], [
+                       'username' => $payload['given_name'] . $payload['family_name'],
+                       'rol' => 'cliente',
+                       'nombres' => $payload['given_name'],
+                       'apellidos' => $payload['family_name'],
+                       'dni' => '00000000', // Establecer un valor por defecto o generar uno
+                       'password' => bcrypt(Str::random(16)), // Genera una contraseña aleatoria
+                       'status' => 'loggedOff',
+                       'emailVerified' => 1, // Establecer email_verified como 1 para usuarios de Google
+                   ]);
+       
+                   // Verifica si el usuario fue creado o solo actualizado
+                   if ($user->wasRecentlyCreated) {
+                       // Si es un nuevo usuario, crear el carrito
+                       $carrito = new Carrito();
+                       $carrito->idUsuario = $user->idUsuario; // Asignar el idUsuario al carrito
+                       $carrito->save(); // Guardar el carrito
+       
+                       return response()->json([
+                           'message' => 'Usuario registrado exitosamente, carrito creado.',
+                       ]);
+                   } else {
+                       // Si el usuario ya existe, puedes retornar un mensaje o actualizar la verificación
+                       $user->update(['email_verified' => 1]); // Actualiza el campo email_verified
+       
+                       return response()->json([
+                           'message' => 'Usuario ya registrado, verificado con Google.',
+                       ]);
+                   }
+       
+               } else {
+                   return response()->json([
+                       'message' => 'Token inválido de Google',
+                   ], 400);
+               }
+           } catch (Exception $e) {
+               return response()->json([
+                   'message' => 'Error al verificar el token de Google',
+               ], 400);
+           }
+       }
 
     public function verificarToken(Request $request)
     {
