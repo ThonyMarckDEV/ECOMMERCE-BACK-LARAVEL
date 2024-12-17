@@ -8,6 +8,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.0",
         "barryvdh/laravel-snappy": "^1.0",
+        "darkaonline/l5-swagger": "^8.6",
         "firebase/php-jwt": "^6.10",
         "google/apiclient": "*",
         "greenter/greenter": "^5.1",
