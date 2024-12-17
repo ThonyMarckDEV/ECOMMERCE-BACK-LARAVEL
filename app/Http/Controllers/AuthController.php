@@ -465,67 +465,30 @@ class AuthController extends Controller
     public function checkStatus(Request $request)
     {
         $idUsuario = $request->input('idUsuario');
-    
-        // Obtener el token del encabezado Authorization
-        $authHeader = $request->header('Authorization');
-    
-        // Extraer el token de la cadena 'Bearer [token]'
-        if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            $token = $matches[1];
-        } else {
-            // Si no se encuentra el token, responde con error
-            return response()->json(['status' => 'invalidToken'], 401);
-        }
-    
-        if (!$idUsuario || !$token) {
-            // Sin idUsuario o token, responde como inválido
-            return response()->json(['status' => 'invalidToken'], 401);
+        
+        if (!$idUsuario) {
+            // Sin idUsuario, responde con Bad Request (400)
+            return response()->json(['status' => 'error', 'message' => 'ID de usuario no proporcionado'], 400);
         }
     
         // Busca el usuario por id
         $user = Usuario::find($idUsuario);
     
-        // Verifica si el token es válido
-        $isTokenValid = $this->validateToken($token, $idUsuario);
-    
-        // Responde según el estado y validez del token
+        // Si el usuario no se encuentra en la BD, responde con Not Found (404)
         if (!$user) {
-            // Usuario no encontrado en la BD
-            return response()->json(['status' => 'loggedOff'], 401);
+            return response()->json(['status' => 'error', 'message' => 'Usuario no encontrado'], 404);
         }
     
-        if ($user && !$isTokenValid) {
-            // Usuario existe pero el token es inválido
-            return response()->json(['status' => 'loggedOnInvalidToken'], 401);
-        }
-    
+        // Si el usuario está marcado como 'loggedOff'
         if ($user->status === 'loggedOff') {
-            // Usuario existe pero está marcado como `loggedOff` en la BD
-            return response()->json(['status' => 'loggedOff'], 401);
+            return response()->json(['status' => 'error', 'message' => 'Usuario desconectado'], 403);
         }
     
-        // Usuario está activo y el token es válido
-        return response()->json(['status' => 'loggedOn', 'isTokenValid' => true], 200);
+        // Si el usuario está activo y encontrado
+        return response()->json(['status' => 'active'], 200);
     }
     
-    // Valida el token JWT y su expiración
-    private function validateToken($token, $idUsuario)
-    {
-        try {
-            // Decodificar y verificar el token JWT
-            $payload = JWT::decode($token, new Key(env('JWT_SECRET'), 'HS256'));
     
-            $expiration = $payload->exp;
-            $tokenUserId = $payload->idUsuario ?? null;
-    
-            // Verifica que el token no esté expirado y que el idUsuario coincida
-            return $expiration > time() && $tokenUserId == $idUsuario;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-    
-
      public function sendContactEmail(Request $request)
      {
          $request->validate([
