@@ -22,14 +22,6 @@ use App\Http\Controllers\AuthController;
 
         Route::post('/registerUserGoogle', [AuthController::class, 'registerUserGoogle']);
 
-        Route::post('logout', [AuthController::class, 'logout']);
-
-        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
-
-        Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
-        
-        Route::post('/check-status', [AuthController::class, 'checkStatus']);
-
         Route::post('/send-message', [AuthController::class, 'sendContactEmail']);
 
         Route::post('/send-verification-codeUser', [AuthController::class, 'sendVerificationCodeUser']);
@@ -38,17 +30,28 @@ use App\Http\Controllers\AuthController;
         
         Route::post('/change-passwordUser', [AuthController::class, 'changePasswordUser']);
 
-        Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
-
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
 
         // Ruta para verificar el token de correo
-        Route::post('verificar-token', [AuthController::class, 'verificarToken']);
+        Route::post('verificar-token', [AuthController::class, 'verificarCorreo']);
         
         Route::get('/status-mantenimiento', [AuthController::class, 'getStatus']);
 //================================================================================================
+    //RUTAS  AUTH PROTEGIDAS
+
+    Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
+
+        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+
+        Route::post('logout', [AuthController::class, 'logout']);
+
+        Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
+
+        Route::post('/check-status', [AuthController::class, 'checkStatus']);
+
+    });
 
 
 //================================================================================================
@@ -99,6 +102,9 @@ use App\Http\Controllers\AuthController;
 
     // RUTAS PARA CLIENTE VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
     Route::middleware(['auth.jwt', 'checkRoleMW:cliente'])->group(function () {
+
+        Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
+
         Route::get('perfilCliente', [ClienteController::class, 'perfilCliente']);
         Route::post('uploadProfileImageCliente/{idUsuario}', [ClienteController::class, 'uploadProfileImageCliente']);
         Route::put('updateCliente/{idUsuario}', [ClienteController::class, 'updateCliente']);
