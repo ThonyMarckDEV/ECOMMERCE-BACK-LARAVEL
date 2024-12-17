@@ -22,12 +22,51 @@ use Illuminate\Support\Facades\DB;
 use Google_Client;
 use Laravel\Socialite\Facades\Socialite;
 
-
+/**
+* @OA\Info(
+*             title="ECOMMERCE API DOCUMENTATION", 
+*             version="1.0",
+*             description="API DOCUMENTATION"
+* )
+*
+* @OA\Server(url="http://localhost:8000")
+*/
 class AuthController extends Controller
 {
 
-        /**
-     * Login de usuario y generación de token JWT.
+    /**
+     * Login
+     * @OA\Post(
+     *     path="/api/login",
+     *     tags={"AUTH CONTROLLER"},
+     *     summary="Login de usuario",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
+     *             @OA\Property(property="password", type="string", example="contraseña123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token generado con éxito",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="token", type="string", example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Credenciales inválidas"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al generar el token"
+     *     )
+     * )
      */
     public function login(Request $request)
     {

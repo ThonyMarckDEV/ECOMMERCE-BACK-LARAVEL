@@ -33,7 +33,53 @@ use Illuminate\Support\Facades\Mail;
 class ClienteController extends Controller
 {
   
-    // En EstudianteController.php
+     /**
+ * Obtener perfil de usuario
+ * @OA\Get(
+ *     path="/api/perfilCliente",
+ *     tags={"CLIENTE CONTROLLER"},
+ *     summary="Obtener perfil de usuario",
+ *     security={{"bearerAuth": {}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Perfil de usuario obtenido con éxito",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="data", type="object", 
+ *                 @OA\Property(property="idUsuario", type="integer", example=1),
+ *                 @OA\Property(property="username", type="string", example="usuario123"),
+ *                 @OA\Property(property="nombres", type="string", example="Juan"),
+ *                 @OA\Property(property="apellidos", type="string", example="Pérez"),
+ *                 @OA\Property(property="dni", type="string", example="12345678"),
+ *                 @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
+ *                 @OA\Property(property="edad", type="integer", example=25),
+ *                 @OA\Property(property="nacimiento", type="string", format="date", example="1999-01-01"),
+ *                 @OA\Property(property="sexo", type="string", example="M"),
+ *                 @OA\Property(property="direccion", type="string", example="Calle 123"),
+ *                 @OA\Property(property="telefono", type="string", example="987654321"),
+ *                 @OA\Property(property="departamento", type="string", example="Lima"),
+ *                 @OA\Property(property="perfil", type="string", example="http://localhost/storage/perfil.jpg")
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="Token no proporcionado o inválido"
+ *     ),
+ *     @OA\Response(
+ *         response=500,
+ *         description="Error al obtener el perfil"
+ *     )
+ * )
+ * 
+ * @OA\SecurityScheme(
+ *     securityScheme="bearerAuth",
+ *     type="http",
+ *     scheme="bearer",
+ *     bearerFormat="JWT",
+ *     description="Usar un token JWT en el encabezado Authorization como Bearer <token>"
+ * )
+ */
     public function perfilCliente()
     {
         $usuario = Auth::user();
