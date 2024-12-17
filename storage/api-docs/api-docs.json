@@ -1354,6 +1354,1513 @@
                     }
                 ]
             }
+        },
+        "/api/carrito": {
+            "post": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Listar productos en el carrito de compras",
+                "description": "Este endpoint permite a un usuario listar los productos que tiene en su carrito de compras.",
+                "operationId": "listarCarrito",
+                "requestBody": {
+                    "description": "Datos necesarios para obtener el carrito de compras",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "idUsuario"
+                                ],
+                                "properties": {
+                                    "idUsuario": {
+                                        "description": "ID del usuario cuyo carrito se quiere obtener",
+                                        "type": "integer",
+                                        "example": 123
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Carrito listado con éxito.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "idDetalle": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "idProducto": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "nombreProducto": {
+                                                        "type": "string",
+                                                        "example": "Producto 1"
+                                                    },
+                                                    "descripcion": {
+                                                        "type": "string",
+                                                        "example": "Descripción del producto"
+                                                    },
+                                                    "cantidad": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "precio": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 100
+                                                    },
+                                                    "stock": {
+                                                        "type": "integer",
+                                                        "example": 10
+                                                    },
+                                                    "urlImagen": {
+                                                        "type": "string",
+                                                        "example": "https://example.com/image.jpg"
+                                                    },
+                                                    "idCategoria": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "nombreTalla": {
+                                                        "type": "string",
+                                                        "example": "M"
+                                                    },
+                                                    "nombreModelo": {
+                                                        "type": "string",
+                                                        "example": "Modelo 1"
+                                                    },
+                                                    "subtotal": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 200
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "El idUsuario es obligatorio.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El idUsuario es obligatorio"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error al obtener el carrito.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al obtener el carrito"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/actualizarCantidadCarrito/{idDetalle}": {
+            "put": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Actualizar cantidad de un producto en el carrito",
+                "description": "Este endpoint permite a un usuario actualizar la cantidad de un producto en su carrito de compras.",
+                "operationId": "actualizarCantidadCarrito",
+                "parameters": [
+                    {
+                        "name": "idDetalle",
+                        "in": "path",
+                        "description": "ID del detalle del carrito cuyo producto se quiere actualizar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos necesarios para actualizar la cantidad en el carrito",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cantidad",
+                                    "idUsuario"
+                                ],
+                                "properties": {
+                                    "cantidad": {
+                                        "description": "Nueva cantidad del producto en el carrito",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "idUsuario": {
+                                        "description": "ID del usuario dueño del carrito",
+                                        "type": "integer",
+                                        "example": 123
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cantidad y precio actualizados correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cantidad y precio actualizados correctamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "La cantidad solicitada supera el stock disponible o la cantidad no es válida.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "La cantidad solicitada supera el stock disponible"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Detalle no encontrado en el carrito, no se encontró stock, o producto no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Detalle no encontrado en el carrito"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado al actualizar la cantidad.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error inesperado al actualizar la cantidad"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/carrito_detalle/{idDetalle}": {
+            "delete": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Eliminar un producto del carrito",
+                "description": "Este endpoint permite a un usuario eliminar un producto específico de su carrito de compras.",
+                "operationId": "eliminarProductoCarrito",
+                "parameters": [
+                    {
+                        "name": "idDetalle",
+                        "in": "path",
+                        "description": "ID del detalle del carrito que se quiere eliminar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Producto eliminado del carrito exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Producto eliminado del carrito"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Detalle no encontrado en el carrito.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Detalle no encontrado en el carrito"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error inesperado al eliminar el producto.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error inesperado al eliminar el producto"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pedidos": {
+            "post": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Crear un nuevo pedido",
+                "description": "Este endpoint permite crear un nuevo pedido, incluyendo detalles como productos, dirección de envío y pago.",
+                "operationId": "crearPedido",
+                "requestBody": [
+                    {
+                        "mediaType": "application/json",
+                        "schema": {
+                            "required": [
+                                "idUsuario",
+                                "idCarrito",
+                                "total",
+                                "idDireccion"
+                            ],
+                            "properties": {
+                                "idUsuario": {
+                                    "description": "ID del usuario que realiza el pedido",
+                                    "type": "integer"
+                                },
+                                "idCarrito": {
+                                    "description": "ID del carrito de compras",
+                                    "type": "integer"
+                                },
+                                "total": {
+                                    "description": "Monto total del pedido",
+                                    "type": "number",
+                                    "format": "float"
+                                },
+                                "idDireccion": {
+                                    "description": "ID de la dirección de envío",
+                                    "type": "integer"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Pedido creado exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Pedido creado exitosamente."
+                                        },
+                                        "idPedido": {
+                                            "type": "integer",
+                                            "example": 12345
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Datos de entrada inválidos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al crear el pedido."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "La dirección proporcionada no existe o no está en uso."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al crear el pedido."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error al crear el pedido."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pedidos/cantidad/{idUsuario}": {
+            "get": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Listar los pedidos de un usuario",
+                "description": "Este endpoint permite a un usuario obtener todos sus pedidos, incluyendo los productos en cada pedido y la dirección de envío.",
+                "operationId": "listarPedidos",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "path",
+                        "description": "ID del usuario para el cual se desean listar los pedidos",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pedidos obtenidos exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "pedidos": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "idPedido": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "idUsuario": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "total": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 100
+                                                    },
+                                                    "estado": {
+                                                        "type": "string",
+                                                        "example": "pendiente"
+                                                    },
+                                                    "departamento": {
+                                                        "type": "string",
+                                                        "example": "Lima"
+                                                    },
+                                                    "provincia": {
+                                                        "type": "string",
+                                                        "example": "Lima"
+                                                    },
+                                                    "distrito": {
+                                                        "type": "string",
+                                                        "example": "Miraflores"
+                                                    },
+                                                    "direccion": {
+                                                        "type": "string",
+                                                        "example": "Av. Pardo y Aliaga 640"
+                                                    },
+                                                    "detalles": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "idDetallePedido": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "idProducto": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "nombreProducto": {
+                                                                    "type": "string",
+                                                                    "example": "Producto 1"
+                                                                },
+                                                                "nombreModelo": {
+                                                                    "type": "string",
+                                                                    "example": "Modelo A"
+                                                                },
+                                                                "nombreTalla": {
+                                                                    "type": "string",
+                                                                    "example": "M"
+                                                                },
+                                                                "cantidad": {
+                                                                    "type": "integer",
+                                                                    "example": 2
+                                                                },
+                                                                "precioUnitario": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 50
+                                                                },
+                                                                "subtotal": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 100
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "direccionEnvio": {
+                                                        "properties": {
+                                                            "departamento": {
+                                                                "type": "string",
+                                                                "example": "Lima"
+                                                            },
+                                                            "provincia": {
+                                                                "type": "string",
+                                                                "example": "Lima"
+                                                            },
+                                                            "distrito": {
+                                                                "type": "string",
+                                                                "example": "Miraflores"
+                                                            },
+                                                            "direccion": {
+                                                                "type": "string",
+                                                                "example": "Av. Pardo y Aliaga 640"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al obtener los pedidos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al obtener los pedidos."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/carrito/cantidad": {
+            "get": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Obtener la cantidad total de productos en el carrito de un usuario",
+                "description": "Este endpoint permite obtener la cantidad total de productos en el carrito de un usuario especificado mediante su idUsuario.",
+                "operationId": "obtenerCantidadCarrito",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "query",
+                        "description": "ID del usuario cuyo carrito se desea consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cantidad de productos obtenida exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "cantidad": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: idUsuario no proporcionado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "idUsuario no proporcionado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al obtener la cantidad del carrito.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al obtener la cantidad del carrito."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pedidos/cantidad": {
+            "get": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Obtener la cantidad de pedidos pendientes de un usuario",
+                "description": "Este endpoint permite obtener la cantidad de pedidos que un usuario tiene en el sistema, excluyendo aquellos que ya se han completado.",
+                "operationId": "obtenerCantidadPedidos",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "query",
+                        "description": "ID del usuario cuyo número de pedidos pendientes se desea consultar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cantidad de pedidos obtenida exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "cantidad": {
+                                            "type": "integer",
+                                            "example": 3
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: idUsuario no proporcionado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "idUsuario no proporcionado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al obtener la cantidad de pedidos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al obtener la cantidad de pedidos."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/listarDireccion/{idUsuario}": {
+            "get": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Obtener las direcciones de un usuario",
+                "description": "Este endpoint permite obtener todas las direcciones asociadas a un usuario específico.",
+                "operationId": "listarDireccion",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "path",
+                        "description": "ID del usuario para obtener sus direcciones",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Direcciones obtenidas correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "idDireccion": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "idUsuario": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "departamento": {
+                                                "type": "string",
+                                                "example": "Lima"
+                                            },
+                                            "provincia": {
+                                                "type": "string",
+                                                "example": "Lima"
+                                            },
+                                            "distrito": {
+                                                "type": "string",
+                                                "example": "Miraflores"
+                                            },
+                                            "direccion": {
+                                                "type": "string",
+                                                "example": "Av. Pardo y Aliaga 610"
+                                            },
+                                            "estado": {
+                                                "type": "string",
+                                                "example": "usando"
+                                            },
+                                            "latitud": {
+                                                "type": "number",
+                                                "format": "float",
+                                                "example": "-12.0464"
+                                            },
+                                            "longitud": {
+                                                "type": "number",
+                                                "format": "float",
+                                                "example": "-77.0352"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado o no tiene direcciones.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al listar direcciones.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error interno al listar direcciones"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/listarDireccionPedido/{idUsuario}": {
+            "get": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Obtener la dirección activa de un usuario",
+                "description": "Este endpoint permite obtener la dirección activa (estado 'usando') de un usuario.",
+                "operationId": "listarDireccionPedido",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "path",
+                        "description": "ID del usuario para obtener su dirección activa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dirección activa obtenida correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "idDireccion": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "idUsuario": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "departamento": {
+                                            "type": "string",
+                                            "example": "Lima"
+                                        },
+                                        "provincia": {
+                                            "type": "string",
+                                            "example": "Lima"
+                                        },
+                                        "distrito": {
+                                            "type": "string",
+                                            "example": "Miraflores"
+                                        },
+                                        "direccion": {
+                                            "type": "string",
+                                            "example": "Av. Pardo y Aliaga 610"
+                                        },
+                                        "latitud": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": "-12.0464"
+                                        },
+                                        "longitud": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": "-77.0352"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado o no tiene dirección activa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al listar dirección activa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error interno al listar direcciones"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/agregarDireccion": {
+            "post": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Agregar una nueva dirección para un usuario",
+                "description": "Este endpoint permite agregar una nueva dirección para un usuario. Si el usuario ya tiene una dirección marcada como 'usando', esa dirección se actualizará a 'no usando'.",
+                "operationId": "agregarDireccion",
+                "requestBody": {
+                    "description": "Datos necesarios para agregar una nueva dirección",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "idUsuario",
+                                    "departamento",
+                                    "provincia",
+                                    "distrito",
+                                    "direccion"
+                                ],
+                                "properties": {
+                                    "idUsuario": {
+                                        "description": "ID del usuario",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "departamento": {
+                                        "description": "Departamento de la dirección",
+                                        "type": "string",
+                                        "example": "Lima"
+                                    },
+                                    "provincia": {
+                                        "description": "Provincia de la dirección",
+                                        "type": "string",
+                                        "example": "Lima"
+                                    },
+                                    "distrito": {
+                                        "description": "Distrito de la dirección",
+                                        "type": "string",
+                                        "example": "Miraflores"
+                                    },
+                                    "direccion": {
+                                        "description": "Dirección completa",
+                                        "type": "string",
+                                        "example": "Av. Pardo y Aliaga 610"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Dirección agregada correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "idDireccion": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "idUsuario": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "departamento": {
+                                            "type": "string",
+                                            "example": "Lima"
+                                        },
+                                        "provincia": {
+                                            "type": "string",
+                                            "example": "Lima"
+                                        },
+                                        "distrito": {
+                                            "type": "string",
+                                            "example": "Miraflores"
+                                        },
+                                        "direccion": {
+                                            "type": "string",
+                                            "example": "Av. Pardo y Aliaga 610"
+                                        },
+                                        "estado": {
+                                            "type": "string",
+                                            "example": "usando"
+                                        },
+                                        "latitud": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": "-12.0464"
+                                        },
+                                        "longitud": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": "-77.0352"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error en los datos de entrada (validación).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "El campo departamento es requerido"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al agregar dirección.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error interno al agregar dirección"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/eliminarDireccion/{idDireccion}": {
+            "delete": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Eliminar una dirección del usuario",
+                "description": "Este endpoint permite eliminar una dirección específica para un usuario. La dirección será eliminada si no está asociada a un pedido en proceso.",
+                "operationId": "eliminarDireccion",
+                "parameters": [
+                    {
+                        "name": "idDireccion",
+                        "in": "path",
+                        "description": "ID de la dirección que se desea eliminar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dirección eliminada exitosamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Dirección eliminada exitosamente."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: la dirección no puede ser eliminada porque está asociada a un pedido en proceso.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No se puede eliminar la dirección: existen pedidos en proceso con esta dirección asignada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error: dirección no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Dirección no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al eliminar la dirección.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al eliminar la dirección."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/setDireccionUsando/{idDireccion}": {
+            "put": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Establecer una dirección como predeterminada (usando)",
+                "description": "Este endpoint permite actualizar el estado de una dirección específica a 'usando' y marcar todas las demás direcciones del usuario como 'no usando'.",
+                "operationId": "setDireccionUsando",
+                "parameters": [
+                    {
+                        "name": "idDireccion",
+                        "in": "path",
+                        "description": "ID de la dirección que se desea marcar como 'usando'",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dirección actualizada correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Dirección actualizada a usando."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Dirección no encontrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Dirección no encontrada."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al actualizar la dirección.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al actualizar la dirección."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/enviarCodigo/{idUsuario}": {
+            "post": {
+                "tags": [
+                    "CLIENTE CONTROLLER"
+                ],
+                "summary": "Enviar un código de verificación al correo del usuario",
+                "description": "Este endpoint envía un código de verificación de 6 dígitos al correo electrónico del usuario especificado. El código se almacena en caché durante 5 minutos.",
+                "operationId": "enviarCodigo",
+                "parameters": [
+                    {
+                        "name": "idUsuario",
+                        "in": "path",
+                        "description": "ID del usuario al que se le enviará el código de verificación",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Código enviado correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno al enviar el código.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al enviar el código."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {

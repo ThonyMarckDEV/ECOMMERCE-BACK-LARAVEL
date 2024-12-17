@@ -913,54 +913,57 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'message' => 'Producto eliminado del carrito'], 200);
     }
 
-    /**
+   /**
      * @OA\Post(
-     *     path="/api/pedido",
+     *     path="/api/pedidos",
      *     summary="Crear un nuevo pedido",
-     *     description="Este endpoint permite a un usuario crear un nuevo pedido, con los productos en su carrito y una dirección de envío.",
+     *     description="Este endpoint permite crear un nuevo pedido, incluyendo detalles como productos, dirección de envío y pago.",
      *     operationId="crearPedido",
      *     tags={"CLIENTE CONTROLLER"},
-     *     security={{"bearerAuth": {}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\Content(
-     *             @OA\MediaType(
-     *                 mediaType="application/json",
-     *                 @OA\Schema(
-     *                     type="object",
-     *                     required={"idUsuario", "idCarrito", "total", "idDireccion"},
-     *                     @OA\Property(property="idUsuario", type="integer", example=1),
-     *                     @OA\Property(property="idCarrito", type="integer", example=1),
-     *                     @OA\Property(property="total", type="number", format="float", example=100.00),
-     *                     @OA\Property(property="idDireccion", type="integer", example=1)
-     *                 )
+     *     security={
+     *         {"bearerAuth": {}}
+     *     },
+     *     requestBody={
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 required={"idUsuario", "idCarrito", "total", "idDireccion"},
+     *                 @OA\Property(property="idUsuario", type="integer", description="ID del usuario que realiza el pedido"),
+     *                 @OA\Property(property="idCarrito", type="integer", description="ID del carrito de compras"),
+     *                 @OA\Property(property="total", type="number", format="float", description="Monto total del pedido"),
+     *                 @OA\Property(property="idDireccion", type="integer", description="ID de la dirección de envío")
      *             )
      *         )
-     *     ),
+     *     },
      *     @OA\Response(
      *         response=201,
-     *         description="Pedido creado exitosamente.",
+     *         description="Pedido creado exitosamente",
      *         @OA\JsonContent(
+     *             type="object",
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Pedido creado exitosamente."),
-     *             @OA\Property(property="idPedido", type="integer", example=1)
+     *             @OA\Property(property="idPedido", type="integer", example=12345)
      *         )
      *     ),
      *     @OA\Response(
      *         response=400,
-     *         description="Datos de entrada no válidos.",
+     *         description="Datos de entrada inválidos",
      *         @OA\JsonContent(
+     *             type="object",
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="La dirección proporcionada no existe o no está en uso.")
+     *             @OA\Property(property="message", type="string", example="Error al crear el pedido."),
+     *             @OA\Property(property="error", type="string", example="La dirección proporcionada no existe o no está en uso.")
      *         )
      *     ),
      *     @OA\Response(
      *         response=500,
-     *         description="Error interno al crear el pedido.",
+     *         description="Error interno del servidor",
      *         @OA\JsonContent(
+     *             type="object",
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Error al crear el pedido."),
-     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
+     *             @OA\Property(property="error", type="string", example="Error al crear el pedido.")
      *         )
      *     )
      * )
@@ -1270,60 +1273,6 @@ class ClienteController extends Controller
     }
 
 
-    /**
-     * @OA\Post(
-     *     path="/api/procesar-pago/{idPedido}",
-     *     summary="Procesar el pago de un pedido",
-     *     description="Este endpoint permite procesar el pago de un pedido, registrando el pago y su comprobante (si aplica), y actualizando el estado del pedido a 'aprobando'.",
-     *     operationId="procesarPago",
-     *     tags={"CLIENTE CONTROLLER"},
-     *     security={{"bearerAuth": {}}},
-     *     @OA\Parameter(
-     *         name="idPedido",
-     *         in="path",
-     *         required=true,
-     *         description="ID del pedido para el cual se realiza el pago",
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\Content(
-     *             mediaType="application/json",
-     *             @OA\Schema(
-     *                 type="object",
-     *                 @OA\Property(property="metodo_pago", type="string", example="yape"),
-     *                 @OA\Property(property="comprobante", type="string", format="binary", description="Archivo de comprobante de pago (si aplica)")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Pago procesado exitosamente.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Pago procesado exitosamente."),
-     *             @OA\Property(property="ruta_comprobante", type="string", example="storage/pagos/comprobante/1/1/archivo_comprobante.jpg")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Error: Pedido no encontrado o ya pagado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Error: Pedido no encontrado o ya pagado.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Error interno al procesar el pago.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Error al procesar el pago."),
-     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
-     *         )
-     *     )
-     * )
-     */
      public function procesarPago(Request $request, $idPedido)
      {
          DB::beginTransaction();
@@ -1948,64 +1897,6 @@ class ClienteController extends Controller
     }
 
 
-    /**
-     * @OA\Post(
-     *     path="/api/verificarCodigo/{idUsuario}",
-     *     summary="Verificar el código de verificación enviado al correo del usuario",
-     *     description="Este endpoint verifica si el código ingresado por el usuario es correcto. El código se compara con el almacenado en caché, y si es correcto, se borra del caché.",
-     *     operationId="verificarCodigo",
-     *     tags={"CLIENTE CONTROLLER"},  // Aquí se añade el tag con el nombre del controlador
-     *     security={{"bearerAuth": {}}},  // Seguridad con JWT
-     *     @OA\Parameter(
-     *         name="idUsuario",
-     *         in="path",
-     *         required=true,
-     *         description="ID del usuario para verificar el código",
-     *         @OA\Schema(
-     *             type="integer",
-     *             example=1
-     *         )
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"code"},
-     *             @OA\Property(property="code", type="integer", example=123456)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Código verificado correctamente.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Código verificado correctamente")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Código incorrecto.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Código incorrecto. Inténtalo nuevamente.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Usuario no encontrado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Usuario no encontrado.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Error interno al verificar el código.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Error al verificar el código."),
-     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado.")
-     *         )
-     *     )
-     * )
-     */
     public function verificarCodigo(Request $request, $idUsuario)
     {
         $codigoIngresado = $request->input('code');
@@ -2020,46 +1911,6 @@ class ClienteController extends Controller
     }
 
 
-    /**
-     * @OA\Patch(
-     *     path="/api/cambiarContrasena",
-     *     summary="Cambiar la contraseña del usuario",
-     *     description="Este endpoint permite al usuario cambiar su contraseña actual por una nueva. Se requiere autenticación con un token JWT.",
-     *     operationId="cambiarContrasena",
-     *     tags={"CLIENTE CONTROLLER"},  // Tag con el nombre del controlador
-     *     security={{"bearerAuth": {}}},  // Seguridad con JWT
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"newPassword"},
-     *             @OA\Property(property="newPassword", type="string", example="nueva_contraseña_123")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Contraseña cambiada correctamente.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Datos de solicitud inválidos.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="La contraseña no es válida.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Error interno al cambiar la contraseña.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Error al cambiar la contraseña."),
-     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado.")
-     *         )
-     *     )
-     * )
-     */
     public function cambiarContrasena(Request $request)
     {
         $usuario = $request->user();
@@ -2071,51 +1922,6 @@ class ClienteController extends Controller
     }
 
 
-    /**
-     * @OA\Post(
-     *     path="/api/cancelarPedido",
-     *     summary="Cancelar un pedido pendiente",
-     *     description="Este endpoint permite cancelar un pedido que aún se encuentra en estado 'pendiente'. Requiere autenticación con token JWT.",
-     *     operationId="cancelarPedido",
-     *     tags={"CLIENTE CONTROLLER"},  // Tag con el nombre del controlador
-     *     security={{"bearerAuth": {}}},  // Seguridad con JWT
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"idPedido"},
-     *             @OA\Property(property="idPedido", type="integer", example=123)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Pedido cancelado exitosamente.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Pedido cancelado exitosamente.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Error al cancelar el pedido. Razón: ID de pedido no proporcionado o el pedido no es 'pendiente'.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Solo se pueden cancelar pedidos pendientes.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Pedido no encontrado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Pedido no encontrado.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Error interno al cancelar el pedido.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Error al cancelar el pedido.")
-     *         )
-     *     )
-     * )
-     */
     public function cancelarPedido(Request $request)
     {
         $idPedido = $request->input('idPedido');
