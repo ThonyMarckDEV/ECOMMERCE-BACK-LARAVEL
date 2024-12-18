@@ -22,14 +22,6 @@ use App\Http\Controllers\AuthController;
 
         Route::post('/registerUserGoogle', [AuthController::class, 'registerUserGoogle']);
 
-        Route::post('logout', [AuthController::class, 'logout']);
-
-        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
-
-        Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
-        
-        Route::post('/check-status', [AuthController::class, 'checkStatus']);
-
         Route::post('/send-message', [AuthController::class, 'sendContactEmail']);
 
         Route::post('/send-verification-codeUser', [AuthController::class, 'sendVerificationCodeUser']);
@@ -38,17 +30,28 @@ use App\Http\Controllers\AuthController;
         
         Route::post('/change-passwordUser', [AuthController::class, 'changePasswordUser']);
 
-        Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
-
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
         Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
 
         // Ruta para verificar el token de correo
-        Route::post('verificar-token', [AuthController::class, 'verificarToken']);
+        Route::post('verificar-token', [AuthController::class, 'verificarCorreo']);
         
         Route::get('/status-mantenimiento', [AuthController::class, 'getStatus']);
 //================================================================================================
+    //RUTAS  AUTH PROTEGIDAS
+
+    Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
+
+        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+
+        Route::post('logout', [AuthController::class, 'logout']);
+
+        Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
+
+        Route::post('/check-status', [AuthController::class, 'checkStatus']);
+
+    });
 
 
 //================================================================================================
@@ -99,6 +102,9 @@ use App\Http\Controllers\AuthController;
 
     // RUTAS PARA CLIENTE VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
     Route::middleware(['auth.jwt', 'checkRoleMW:cliente'])->group(function () {
+
+        Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
+
         Route::get('perfilCliente', [ClienteController::class, 'perfilCliente']);
         Route::post('uploadProfileImageCliente/{idUsuario}', [ClienteController::class, 'uploadProfileImageCliente']);
         Route::put('updateCliente/{idUsuario}', [ClienteController::class, 'updateCliente']);
@@ -107,8 +113,8 @@ use App\Http\Controllers\AuthController;
         // Ruta para agregar un producto al carrito
         Route::post('agregarCarrito', [ClienteController::class, 'agregarAlCarrito']);
         Route::post('carrito', [ClienteController::class, 'listarCarrito']); // Listar productos en el carrito
-        Route::put('carrito_detalle/{idDetalle}', [ClienteController::class, 'actualizarCantidad']); // Actualizar cantidad de producto
-        Route::delete('carrito_detalle/{idDetalle}', [ClienteController::class, 'eliminarProducto']); // Eliminar producto del carrito
+        Route::put('carrito_detalle/{idDetalle}', [ClienteController::class, 'actualizarCantidadCarrito']); // Actualizar cantidad de producto
+        Route::delete('carrito_detalle/{idDetalle}', [ClienteController::class, 'eliminarProductoCarrito']); // Eliminar producto del carrito
         Route::get('/carrito/cantidad', [ClienteController::class, 'obtenerCantidadCarrito']);
       
       
@@ -116,12 +122,8 @@ use App\Http\Controllers\AuthController;
         Route::post('/procesar-pago/{idPedido}', [ClienteController::class, 'procesarPago']);
     
     
-        Route::post('/pedido', [ClienteController::class, 'crearPedido']);
-        Route::post('/pedidos/cantidad', [ClienteController::class, 'obtenerCantidadPedidos']);
-
         // Ruta para listar pedidos de un usuario
         Route::get('/obtenerDireccionPedidoUser/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
-        Route::get('/pedidos/{idUsuario}', [ClienteController::class, 'listarPedidos']);
         Route::get('/listarDireccion/{idUsuario}', [ClienteController::class, 'listarDireccion']);
         Route::get('/listarDireccionPedido/{idUsuario}', [ClienteController::class, 'listarDireccionPedido']);
 
@@ -129,13 +131,17 @@ use App\Http\Controllers\AuthController;
         Route::delete('/eliminarDireccion/{id}', [ClienteController::class, 'eliminarDireccion']);
         Route::put('/setDireccionUsando/{idDireccion}', [ClienteController::class, 'setDireccionUsando']);
 
-        
+
+        Route::post('/pedido', [ClienteController::class, 'crearPedido']);
+        Route::post('/pedidos/cantidad', [ClienteController::class, 'obtenerCantidadPedidos']);
+        Route::delete('/cancelarPedido', [ClienteController::class, 'cancelarPedido']);
+        Route::get('/pedidos/{idUsuario}', [ClienteController::class, 'listarPedidos']);
 
         Route::post('/enviarCodigo/{idUsuario}', [ClienteController::class, 'enviarCodigo']);
         Route::post('/verificarCodigo/{idUsuario}', [ClienteController::class, 'verificarCodigo']);
         Route::post('/cambiarContrasena', [ClienteController::class, 'cambiarContrasena']);
 
-        Route::delete('/cancelarPedido', [ClienteController::class, 'cancelarPedido']);
+        
 
         Route::post('/payment/preference', [PaymentController::class, 'createPreference']);
 

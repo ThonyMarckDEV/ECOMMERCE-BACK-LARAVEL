@@ -22,12 +22,50 @@ use Illuminate\Support\Facades\DB;
 use Google_Client;
 use Laravel\Socialite\Facades\Socialite;
 
-
+/**
+* @OA\Info(
+*    title="ECOMMERCE API DOCUMENTATION", 
+*    version="1.0",
+*    description="API DOCUMENTATION"
+* )
+*
+* @OA\Server(url="http://localhost:8000")
+*/
 class AuthController extends Controller
 {
-
-        /**
-     * Login de usuario y generación de token JWT.
+    /**
+     * Login
+     * @OA\Post(
+     *     path="/api/login",
+     *     tags={"AUTH CONTROLLER"},
+     *     summary="Login de usuario",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
+     *             @OA\Property(property="password", type="string", example="contraseña123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token generado con éxito",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="token", type="string", example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Credenciales inválidas"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al generar el token"
+     *     )
+     * )
      */
     public function login(Request $request)
     {
@@ -143,7 +181,71 @@ class AuthController extends Controller
         }
     }
 
-     // FUNCION PARA REGISTRAR UN USUARIO
+
+
+
+
+        /**
+         * Registro de usuario
+         * 
+         * Esta API permite registrar un nuevo usuario, validando la entrada y asegurando que los datos sean correctos, como el correo, DNI y nombre de usuario.
+         * 
+         * @OA\Post(
+         *     path="/api/registerUser",
+         *     tags={"AUTH CONTROLLER"},
+         *     summary="Registrar un nuevo usuario",
+         *     @OA\RequestBody(
+         *         required=true,
+         *         @OA\JsonContent(
+         *             @OA\Property(property="username", type="string", example="usuario123"),
+         *             @OA\Property(property="rol", type="string", example="cliente"),
+         *             @OA\Property(property="nombres", type="string", example="Juan"),
+         *             @OA\Property(property="apellidos", type="string", example="Pérez Gómez"),
+         *             @OA\Property(property="dni", type="string", example="12345678"),
+         *             @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
+         *             @OA\Property(property="edad", type="integer", example=25),
+         *             @OA\Property(property="nacimiento", type="string", format="date", example="1998-05-15"),
+         *             @OA\Property(property="telefono", type="string", example="987654321"),
+         *             @OA\Property(property="departamento", type="string", example="Lima"),
+         *             @OA\Property(property="password", type="string", example="Contraseña123!")
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=201,
+         *         description="Usuario registrado con éxito y carrito creado",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="success", type="boolean", example=true),
+         *             @OA\Property(property="message", type="string", example="Usuario registrado y carrito creado exitosamente, Verifica tu correo.")
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=400,
+         *         description="Error en la validación de los datos proporcionados",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="errors", type="object", additionalProperties={}),
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=409,
+         *         description="El correo o DNI ya está registrado",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="errors", type="object",
+         *                 @OA\Property(property="correo", type="string", example="El correo ya está registrado."),
+         *                 @OA\Property(property="dni", type="string", example="El DNI ya está registrado.")
+         *             )
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=500,
+         *         description="Error interno del servidor al registrar el usuario",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="success", type="boolean", example=false),
+         *             @OA\Property(property="message", type="string", example="Error al registrar el usuario y crear el carrito"),
+         *             @OA\Property(property="error", type="string", example="Error details")
+         *         )
+         *     )
+         * )
+         */
         public function registerUser(Request $request)
         {
             $messages = [
@@ -168,7 +270,7 @@ class AuthController extends Controller
                 'password.regex' => 'La contraseña debe incluir al menos una mayúscula y un símbolo.',
                 'password.confirmed' => 'Las contraseñas no coinciden.',
             ];
-
+            
             $validator = Validator::make($request->all(), [
                 'username' => 'required|string|max:255|unique:usuarios',
                 'rol' => 'required|string|max:255',
@@ -191,21 +293,36 @@ class AuthController extends Controller
                     'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_])[A-Za-z\d!@#$%^&*(),.?":{}|<>_]{8,}$/',
                 ]
             ], $messages);
-
+            
             if ($validator->fails()) {
-               // return response()->json(['errors' => $validator->errors()], 422);
+                return response()->json(['errors' => $validator->errors()], 422);
             }
-
-            // Verificar si el nombre de usuario, correo o DNI ya están en uso
-            $existingUser = Usuario::where('username', $request->username)
-                                ->orWhere('correo', $request->correo)
-                                ->orWhere('dni', $request->dni)
-                                ->first();
-
-            if ($existingUser) {
+            
+            // Verificar si el nombre de usuario ya está en uso
+            $existingUsername = Usuario::where('username', $request->username)->first();
+            if ($existingUsername) {
                 return response()->json([
                     'errors' => [
-                        'correo' => 'El correo ya está registrado.',
+                        'username' => 'El nombre de usuario ya está en uso.'
+                    ]
+                ], 409);
+            }
+            
+            // Verificar si el correo ya está registrado
+            $existingEmail = Usuario::where('correo', $request->correo)->first();
+            if ($existingEmail) {
+                return response()->json([
+                    'errors' => [
+                        'correo' => 'El correo ya está registrado.'
+                    ]
+                ], 409);
+            }
+            
+            // Verificar si el DNI ya está registrado
+            $existingDni = Usuario::where('dni', $request->dni)->first();
+            if ($existingDni) {
+                return response()->json([
+                    'errors' => [
                         'dni' => 'El DNI ya está registrado.'
                     ]
                 ], 409);
@@ -311,7 +428,49 @@ class AuthController extends Controller
            }
        }
 
-    public function verificarToken(Request $request)
+
+    /**
+     * @OA\Post(
+     *     path="/api/verificar-token",
+     *     summary="Verificar correo electrónico",
+     *     description="Este endpoint se utiliza para verificar el correo electrónico de un usuario utilizando un token de verificación.",
+     *     operationId="verificarCorreo",
+     *     tags={"AUTH CONTROLLER"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"token_veririficador"},
+     *             @OA\Property(property="token_veririficador", type="string", description="Token de verificación enviado al correo del usuario.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Correo verificado exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Correo verificado exitosamente."),
+     *             @OA\Property(property="token", type="string", nullable=true, example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MX0.sVjK...") 
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Token no válido o ya utilizado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Token no válido o ya utilizado.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al verificar el correo.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al verificar el correo.")
+     *         )
+     *     ),
+     * )
+     */
+    public function verificarCorreo(Request $request)
     {
         try {
             // Validar la solicitud
@@ -382,55 +541,82 @@ class AuthController extends Controller
         }
     }
 
-
     /**
-     * Logout del usuario y revocación del token JWT.
+     * @OA\Post(
+     *     path="/api/logout",
+     *     summary="Cerrar sesión del usuario",
+     *     description="Este endpoint se utiliza para cerrar sesión de un usuario y revocar su token JWT.",
+     *     operationId="logout",
+     *     tags={"AUTH CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"idUsuario"},
+     *             @OA\Property(property="idUsuario", type="integer", description="ID del usuario que desea cerrar sesión.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Usuario deslogueado correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Usuario deslogueado correctamente.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="No se encontró el usuario.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No se pudo encontrar el usuario.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al desloguear al usuario.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="No se pudo desloguear al usuario.")
+     *         )
+     *     ),
+     * )
      */
     public function logout(Request $request)
     {
-        
         $request->validate([
             'idUsuario' => 'required|integer',
         ]);
-    
-      
+
         $user = Usuario::where('idUsuario', $request->idUsuario)->first();
-    
+
         if ($user) {
             try {
-                
                 $user->status = 'loggedOff';
                 $user->save();
-    
+
                 return response()->json(['success' => true, 'message' => 'Usuario deslogueado correctamente'], 200);
             } catch (JWTException $e) {
                 return response()->json(['error' => 'No se pudo desloguear al usuario'], 500);
             }
         }
-    
+
         return response()->json(['success' => false, 'message' => 'No se pudo encontrar el usuario'], 404);
     }
 
-    /**
-     * Refrescar el token JWT.
-     */
+
     public function refreshToken(Request $request)
     {
         try {
             $oldToken = JWTAuth::getToken();
 
-         
             Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
 
-            
             $newToken = JWTAuth::refresh($oldToken);
 
-          
             Log::info('Token refrescado: Nuevo token', ['newToken' => $newToken]);
 
             return response()->json(['accessToken' => $newToken], 200);
         } catch (JWTException $e) {
-            
             Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
 
             return response()->json(['error' => 'No se pudo refrescar el token'], 500);
@@ -438,21 +624,59 @@ class AuthController extends Controller
     }
 
 
+    /**
+     * @OA\Post(
+     *     path="/api/update-activity",
+     *     summary="Actualizar la última actividad del usuario",
+     *     description="Este endpoint actualiza la fecha de la última actividad del usuario especificado.",
+     *     operationId="updateLastActivity",
+     *     tags={"AUTH CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="query",
+     *         description="ID del usuario cuya última actividad se actualizará.",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Actividad actualizada correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Last activity updated")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Usuario no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Datos de entrada inválidos.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="ID de usuario requerido")
+     *         )
+     *     )
+     * )
+     */
     public function updateLastActivity(Request $request)
     {
-        
         $request->validate([
             'idUsuario' => 'required|integer',
         ]);
-        
-        
+
         $user = Usuario::find($request->idUsuario);
         
         if (!$user) {
             return response()->json(['error' => 'Usuario no encontrado'], 404);
         }
         
-       
         $user->activity()->updateOrCreate(
             ['idUsuario' => $user->idUsuario],
             ['last_activity' => now()]
@@ -462,6 +686,57 @@ class AuthController extends Controller
     }
 
 
+    /**
+     * @OA\Post(
+     *     path="/api/check-status",
+     *     summary="Verificar el estado del usuario",
+     *     description="Este endpoint verifica el estado del usuario, si está conectado o desconectado.",
+     *     operationId="checkStatus",
+     *     tags={"AUTH CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="query",
+     *         description="ID del usuario cuyo estado se desea verificar.",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="El usuario está activo.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="active")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="ID de usuario no proporcionado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="error"),
+     *             @OA\Property(property="message", type="string", example="ID de usuario no proporcionado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="error"),
+     *             @OA\Property(property="message", type="string", example="Usuario no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Usuario desconectado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="error"),
+     *             @OA\Property(property="message", type="string", example="Usuario desconectado")
+     *         )
+     *     )
+     * )
+     */
     public function checkStatus(Request $request)
     {
         $idUsuario = $request->input('idUsuario');
@@ -470,25 +745,65 @@ class AuthController extends Controller
             // Sin idUsuario, responde con Bad Request (400)
             return response()->json(['status' => 'error', 'message' => 'ID de usuario no proporcionado'], 400);
         }
-    
+
         // Busca el usuario por id
         $user = Usuario::find($idUsuario);
-    
+
         // Si el usuario no se encuentra en la BD, responde con Not Found (404)
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'Usuario no encontrado'], 404);
         }
-    
+
         // Si el usuario está marcado como 'loggedOff'
         if ($user->status === 'loggedOff') {
             return response()->json(['status' => 'error', 'message' => 'Usuario desconectado'], 403);
         }
-    
+
         // Si el usuario está activo y encontrado
         return response()->json(['status' => 'active'], 200);
     }
-    
-    
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/send-message",
+     *     summary="Enviar mensaje de contacto",
+     *     description="Este endpoint permite a los usuarios enviar un mensaje de contacto al administrador.",
+     *     operationId="sendContactEmail",
+     *     tags={"AUTH CONTROLLER"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos del mensaje de contacto",
+     *         @OA\JsonContent(
+     *             required={"name", "email", "message"},
+     *             @OA\Property(property="name", type="string", description="Nombre del remitente", example="John Doe"),
+     *             @OA\Property(property="email", type="string", format="email", description="Correo electrónico del remitente", example="johndoe@example.com"),
+     *             @OA\Property(property="message", type="string", description="Mensaje de contacto", example="Hola, tengo una consulta sobre los productos.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Mensaje enviado correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="string", example="Mensaje enviado correctamente.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error en los datos enviados.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="El nombre es requerido.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al enviar el mensaje.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error al enviar el mensaje. Inténtalo más tarde.")
+     *         )
+     *     )
+     * )
+     */
      public function sendContactEmail(Request $request)
      {
          $request->validate([
@@ -514,6 +829,45 @@ class AuthController extends Controller
          return response()->json(['success' => 'Mensaje enviado correctamente.']);
      }
 
+
+    /**
+     * @OA\Post(
+     *     path="/api/send-verification-codeUser",
+     *     summary="Enviar código de verificación para restablecer contraseña",
+     *     description="Este endpoint permite a los usuarios recibir un código de verificación por correo electrónico para restablecer su contraseña.",
+     *     operationId="sendVerificationCodeUser",
+     *     tags={"AUTH CONTROLLER"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Correo electrónico del usuario para el código de verificación",
+     *         @OA\JsonContent(
+     *             required={"email"},
+     *             @OA\Property(property="email", type="string", format="email", description="Correo electrónico del usuario", example="usuario@ejemplo.com")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Código de verificación enviado correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Código de verificación enviado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Correo electrónico no válido o no existe.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="El correo electrónico no existe.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al enviar el código de verificación.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error al enviar el código de verificación. Intenta nuevamente.")
+     *         )
+     *     )
+     * )
+     */
      public function sendVerificationCodeUser(Request $request)
     {
         $request->validate([
@@ -533,6 +887,46 @@ class AuthController extends Controller
         return response()->json(['message' => 'Código de verificación enviado'], 200);
     }
 
+    
+    /**
+     * @OA\Post(
+     *     path="/api/verify-codeUser",
+     *     summary="Verificar código de verificación para restablecer contraseña",
+     *     description="Este endpoint permite verificar el código de verificación recibido por correo electrónico para proceder con el restablecimiento de la contraseña.",
+     *     operationId="verifyCodeUser",
+     *     tags={"AUTH CONTROLLER"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Correo electrónico y código de verificación del usuario",
+     *         @OA\JsonContent(
+     *             required={"email", "code"},
+     *             @OA\Property(property="email", type="string", format="email", description="Correo electrónico del usuario", example="usuario@ejemplo.com"),
+     *             @OA\Property(property="code", type="integer", description="Código de verificación enviado al correo electrónico", example=123456)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Código verificado correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Código verificado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Código incorrecto o expirado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Código incorrecto o expirado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al verificar el código de verificación.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error al verificar el código. Intenta nuevamente.")
+     *         )
+     *     )
+     * )
+     */
     public function verifyCodeUser(Request $request)
     {
         $request->validate([
@@ -552,6 +946,7 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Código incorrecto o expirado'], 400);
     }
+    
 
     public function changePasswordUser(Request $request)
     {

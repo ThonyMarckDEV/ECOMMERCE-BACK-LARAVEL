@@ -33,7 +33,53 @@ use Illuminate\Support\Facades\Mail;
 class ClienteController extends Controller
 {
   
-    // En EstudianteController.php
+     /**
+ * Obtener perfil de usuario
+ * @OA\Get(
+ *     path="/api/perfilCliente",
+ *     tags={"CLIENTE CONTROLLER"},
+ *     summary="Obtener perfil de usuario",
+ *     security={{"bearerAuth": {}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Perfil de usuario obtenido con éxito",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="data", type="object", 
+ *                 @OA\Property(property="idUsuario", type="integer", example=1),
+ *                 @OA\Property(property="username", type="string", example="usuario123"),
+ *                 @OA\Property(property="nombres", type="string", example="Juan"),
+ *                 @OA\Property(property="apellidos", type="string", example="Pérez"),
+ *                 @OA\Property(property="dni", type="string", example="12345678"),
+ *                 @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
+ *                 @OA\Property(property="edad", type="integer", example=25),
+ *                 @OA\Property(property="nacimiento", type="string", format="date", example="1999-01-01"),
+ *                 @OA\Property(property="sexo", type="string", example="M"),
+ *                 @OA\Property(property="direccion", type="string", example="Calle 123"),
+ *                 @OA\Property(property="telefono", type="string", example="987654321"),
+ *                 @OA\Property(property="departamento", type="string", example="Lima"),
+ *                 @OA\Property(property="perfil", type="string", example="http://localhost/storage/perfil.jpg")
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="Token no proporcionado o inválido"
+ *     ),
+ *     @OA\Response(
+ *         response=500,
+ *         description="Error al obtener el perfil"
+ *     )
+ * )
+ * 
+ * @OA\SecurityScheme(
+ *     securityScheme="bearerAuth",
+ *     type="http",
+ *     scheme="bearer",
+ *     bearerFormat="JWT",
+ *     description="Usar un token JWT en el encabezado Authorization como Bearer <token>"
+ * )
+ */
     public function perfilCliente()
     {
         $usuario = Auth::user();
@@ -59,6 +105,64 @@ class ClienteController extends Controller
         ]);
     }
 
+
+    /**
+     * @OA\Post(
+     *     path="/api/uploadProfileImageCliente/{idUsuario}",
+     *     summary="Subir imagen de perfil de cliente",
+     *     description="Este endpoint permite a un cliente subir o actualizar su imagen de perfil.",
+     *     operationId="uploadProfileImageCliente",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario cuya imagen de perfil se va a actualizar",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Imagen de perfil que el cliente quiere subir",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"perfil"},
+     *                 @OA\Property(
+     *                     property="perfil",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Imagen de perfil del cliente"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Imagen de perfil subida con éxito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="filename", type="string", example="1/imagen_perfil.jpg")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="No se cargó la imagen o no se encontró el usuario.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No se cargó la imagen")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Usuario no encontrado")
+     *         )
+     *     )
+     * )
+     */
     public function uploadProfileImageCliente(Request $request, $idUsuario)
     {
         $docente = Usuario::find($idUsuario);
@@ -87,6 +191,64 @@ class ClienteController extends Controller
     }
 
 
+    /**
+     * @OA\Put(
+     *     path="/api/updateCliente/{idUsuario}",
+     *     summary="Actualizar datos del cliente",
+     *     description="Este endpoint permite actualizar los datos del cliente, como su nombre, correo, y otros detalles.",
+     *     operationId="updateCliente",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario (cliente) que se va a actualizar",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos que se desean actualizar del cliente",
+     *         @OA\JsonContent(
+     *             required={"nombres", "apellidos", "correo"},
+     *             @OA\Property(property="nombres", type="string", example="Juan"),
+     *             @OA\Property(property="apellidos", type="string", example="Pérez"),
+     *             @OA\Property(property="dni", type="string", example="12345678"),
+     *             @OA\Property(property="correo", type="string", example="juan.perez@example.com"),
+     *             @OA\Property(property="edad", type="integer", example=30),
+     *             @OA\Property(property="nacimiento", type="string", format="date", example="1994-01-01"),
+     *             @OA\Property(property="sexo", type="string", example="Masculino"),
+     *             @OA\Property(property="direccion", type="string", example="Calle Ficticia 123"),
+     *             @OA\Property(property="telefono", type="string", example="987654321"),
+     *             @OA\Property(property="departamento", type="string", example="Lima")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Datos del cliente actualizados correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Datos actualizados correctamente")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="El correo electrónico ya está en uso.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="El correo ya está en uso")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Cliente no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Cliente no encontrado")
+     *         )
+     *     )
+     * )
+     */
     public function updateCliente(Request $request, $idUsuario)
     {
         $docente = Usuario::find($idUsuario);
@@ -239,6 +401,63 @@ class ClienteController extends Controller
 
   
 
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/agregarCarrito",
+     *     summary="Agregar producto al carrito de compras",
+     *     description="Este endpoint permite a un usuario agregar un producto a su carrito de compras.",
+     *     operationId="agregarAlCarrito",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos del producto a agregar al carrito",
+     *         @OA\JsonContent(
+     *             required={"idProducto", "cantidad", "idUsuario", "idModelo", "idTalla"},
+     *             @OA\Property(property="idProducto", type="integer", example=1, description="ID del producto que se va a agregar al carrito"),
+     *             @OA\Property(property="cantidad", type="integer", example=2, description="Cantidad de producto a agregar"),
+     *             @OA\Property(property="idUsuario", type="integer", example=123, description="ID del usuario que está agregando el producto"),
+     *             @OA\Property(property="idModelo", type="integer", example=5, description="ID del modelo del producto"),
+     *             @OA\Property(property="idTalla", type="integer", example=3, description="ID de la talla seleccionada del producto")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Producto agregado al carrito con éxito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Producto agregado al carrito con éxito")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error de validación o stock insuficiente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="La cantidad solicitada excede el stock disponible")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Producto, modelo, talla o usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Producto no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error en la base de datos o inesperado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al agregar al carrito"),
+     *             @OA\Property(property="error", type="string", example="Detalle del error")
+     *         )
+     *     )
+     * )
+     */
     public function agregarAlCarrito(Request $request)
     {
         // Validación de los datos recibidos
@@ -387,6 +606,62 @@ class ClienteController extends Controller
         }
     }
 
+
+    /**
+     * @OA\Post(
+     *     path="/api/carrito",
+     *     summary="Listar productos en el carrito de compras",
+     *     description="Este endpoint permite a un usuario listar los productos que tiene en su carrito de compras.",
+     *     operationId="listarCarrito",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos necesarios para obtener el carrito de compras",
+     *         @OA\JsonContent(
+     *             required={"idUsuario"},
+     *             @OA\Property(property="idUsuario", type="integer", example=123, description="ID del usuario cuyo carrito se quiere obtener")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Carrito listado con éxito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="idDetalle", type="integer", example=1),
+     *                 @OA\Property(property="idProducto", type="integer", example=1),
+     *                 @OA\Property(property="nombreProducto", type="string", example="Producto 1"),
+     *                 @OA\Property(property="descripcion", type="string", example="Descripción del producto"),
+     *                 @OA\Property(property="cantidad", type="integer", example=2),
+     *                 @OA\Property(property="precio", type="number", format="float", example=100.00),
+     *                 @OA\Property(property="stock", type="integer", example=10),
+     *                 @OA\Property(property="urlImagen", type="string", example="https://example.com/image.jpg"),
+     *                 @OA\Property(property="idCategoria", type="integer", example=1),
+     *                 @OA\Property(property="nombreTalla", type="string", example="M"),
+     *                 @OA\Property(property="nombreModelo", type="string", example="Modelo 1"),
+     *                 @OA\Property(property="subtotal", type="number", format="float", example=200.00)
+     *             ))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="El idUsuario es obligatorio.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="El idUsuario es obligatorio")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error al obtener el carrito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al obtener el carrito")
+     *         )
+     *     )
+     * )
+     */
     public function listarCarrito(Request $request)
     {
         try {
@@ -445,7 +720,66 @@ class ClienteController extends Controller
         }
     }
 
-    public function actualizarCantidad(Request $request, $idDetalle)
+
+    /**
+     * @OA\Put(
+     *     path="/api/actualizarCantidadCarrito/{idDetalle}",
+     *     summary="Actualizar cantidad de un producto en el carrito",
+     *     description="Este endpoint permite a un usuario actualizar la cantidad de un producto en su carrito de compras.",
+     *     operationId="actualizarCantidadCarrito",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idDetalle",
+     *         in="path",
+     *         required=true,
+     *         description="ID del detalle del carrito cuyo producto se quiere actualizar",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos necesarios para actualizar la cantidad en el carrito",
+     *         @OA\JsonContent(
+     *             required={"cantidad", "idUsuario"},
+     *             @OA\Property(property="cantidad", type="integer", example=2, description="Nueva cantidad del producto en el carrito"),
+     *             @OA\Property(property="idUsuario", type="integer", example=123, description="ID del usuario dueño del carrito")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Cantidad y precio actualizados correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Cantidad y precio actualizados correctamente")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="La cantidad solicitada supera el stock disponible o la cantidad no es válida.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="La cantidad solicitada supera el stock disponible")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Detalle no encontrado en el carrito, no se encontró stock, o producto no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Detalle no encontrado en el carrito")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error inesperado al actualizar la cantidad.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error inesperado al actualizar la cantidad")
+     *         )
+     *     )
+     * )
+     */
+    public function actualizarCantidadCarrito(Request $request, $idDetalle)
     {
         // Obtener la cantidad y el idUsuario desde el cuerpo de la solicitud
         $cantidad = $request->input('cantidad');
@@ -517,8 +851,48 @@ class ClienteController extends Controller
     }
 
     
-    // Eliminar un producto del carrito por idDetalle
-    public function eliminarProducto($idDetalle)
+    /**
+     * @OA\Delete(
+     *     path="/api/carrito_detalle/{idDetalle}",
+     *     summary="Eliminar un producto del carrito",
+     *     description="Este endpoint permite a un usuario eliminar un producto específico de su carrito de compras.",
+     *     operationId="eliminarProductoCarrito",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idDetalle",
+     *         in="path",
+     *         required=true,
+     *         description="ID del detalle del carrito que se quiere eliminar",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Producto eliminado del carrito exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Producto eliminado del carrito")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Detalle no encontrado en el carrito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Detalle no encontrado en el carrito")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error inesperado al eliminar el producto.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error inesperado al eliminar el producto")
+     *         )
+     *     )
+     * )
+     */
+    public function eliminarProductoCarrito($idDetalle)
     {
         $userId = Auth::id();
 
@@ -539,7 +913,61 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'message' => 'Producto eliminado del carrito'], 200);
     }
 
-
+   /**
+     * @OA\Post(
+     *     path="/api/pedidos",
+     *     summary="Crear un nuevo pedido",
+     *     description="Este endpoint permite crear un nuevo pedido, incluyendo detalles como productos, dirección de envío y pago.",
+     *     operationId="crearPedido",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={
+     *         {"bearerAuth": {}}
+     *     },
+     *     requestBody={
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 required={"idUsuario", "idCarrito", "total", "idDireccion"},
+     *                 @OA\Property(property="idUsuario", type="integer", description="ID del usuario que realiza el pedido"),
+     *                 @OA\Property(property="idCarrito", type="integer", description="ID del carrito de compras"),
+     *                 @OA\Property(property="total", type="number", format="float", description="Monto total del pedido"),
+     *                 @OA\Property(property="idDireccion", type="integer", description="ID de la dirección de envío")
+     *             )
+     *         )
+     *     },
+     *     @OA\Response(
+     *         response=201,
+     *         description="Pedido creado exitosamente",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Pedido creado exitosamente."),
+     *             @OA\Property(property="idPedido", type="integer", example=12345)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Datos de entrada inválidos",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al crear el pedido."),
+     *             @OA\Property(property="error", type="string", example="La dirección proporcionada no existe o no está en uso.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno del servidor",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al crear el pedido."),
+     *             @OA\Property(property="error", type="string", example="Error al crear el pedido.")
+     *         )
+     *     )
+     * )
+     */
     public function crearPedido(Request $request)
     {
         DB::beginTransaction();
@@ -690,6 +1118,76 @@ class ClienteController extends Controller
         }
     }
 
+
+    /**
+     * @OA\Get(
+     *     path="/api/pedidos/cantidad/{idUsuario}",
+     *     summary="Listar los pedidos de un usuario",
+     *     description="Este endpoint permite a un usuario obtener todos sus pedidos, incluyendo los productos en cada pedido y la dirección de envío.",
+     *     operationId="listarPedidos",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario para el cual se desean listar los pedidos",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Pedidos obtenidos exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="pedidos", type="array", @OA\Items(
+     *                 type="object",
+     *                 @OA\Property(property="idPedido", type="integer", example=1),
+     *                 @OA\Property(property="idUsuario", type="integer", example=1),
+     *                 @OA\Property(property="total", type="number", format="float", example=100.00),
+     *                 @OA\Property(property="estado", type="string", example="pendiente"),
+     *                 @OA\Property(property="departamento", type="string", example="Lima"),
+     *                 @OA\Property(property="provincia", type="string", example="Lima"),
+     *                 @OA\Property(property="distrito", type="string", example="Miraflores"),
+     *                 @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 640"),
+     *                 @OA\Property(property="detalles", type="array", @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="idDetallePedido", type="integer", example=1),
+     *                     @OA\Property(property="idProducto", type="integer", example=1),
+     *                     @OA\Property(property="nombreProducto", type="string", example="Producto 1"),
+     *                     @OA\Property(property="nombreModelo", type="string", example="Modelo A"),
+     *                     @OA\Property(property="nombreTalla", type="string", example="M"),
+     *                     @OA\Property(property="cantidad", type="integer", example=2),
+     *                     @OA\Property(property="precioUnitario", type="number", format="float", example=50.00),
+     *                     @OA\Property(property="subtotal", type="number", format="float", example=100.00)
+     *                 )),
+     *                 @OA\Property(property="direccionEnvio", type="object",
+     *                     @OA\Property(property="departamento", type="string", example="Lima"),
+     *                     @OA\Property(property="provincia", type="string", example="Lima"),
+     *                     @OA\Property(property="distrito", type="string", example="Miraflores"),
+     *                     @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 640")
+     *                 )
+     *             ))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Usuario no encontrado.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al obtener los pedidos.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al obtener los pedidos."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
+     *         )
+     *     )
+     * )
+     */
     public function listarPedidos($idUsuario)
     {
         try {
@@ -825,6 +1323,49 @@ class ClienteController extends Controller
          }
      }
 
+
+
+    /**
+     * @OA\Get(
+     *     path="/api/carrito/cantidad",
+     *     summary="Obtener la cantidad total de productos en el carrito de un usuario",
+     *     description="Este endpoint permite obtener la cantidad total de productos en el carrito de un usuario especificado mediante su idUsuario.",
+     *     operationId="obtenerCantidadCarrito",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="query",
+     *         required=true,
+     *         description="ID del usuario cuyo carrito se desea consultar",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Cantidad de productos obtenida exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="cantidad", type="integer", example=5)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error: idUsuario no proporcionado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="idUsuario no proporcionado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al obtener la cantidad del carrito.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al obtener la cantidad del carrito."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
+     *         )
+     *     )
+     * )
+     */
      public function obtenerCantidadCarrito(Request $request)
      {
          // Obtén el idUsuario de los parámetros de la URL
@@ -844,6 +1385,49 @@ class ClienteController extends Controller
      }
 
 
+
+     /**
+     * @OA\Get(
+     *     path="/api/pedidos/cantidad",
+     *     summary="Obtener la cantidad de pedidos pendientes de un usuario",
+     *     description="Este endpoint permite obtener la cantidad de pedidos que un usuario tiene en el sistema, excluyendo aquellos que ya se han completado.",
+     *     operationId="obtenerCantidadPedidos",
+     *     tags={"CLIENTE CONTROLLER"},
+     *      security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="query",
+     *         required=true,
+     *         description="ID del usuario cuyo número de pedidos pendientes se desea consultar",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Cantidad de pedidos obtenida exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="cantidad", type="integer", example=3)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error: idUsuario no proporcionado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="idUsuario no proporcionado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al obtener la cantidad de pedidos.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al obtener la cantidad de pedidos."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
+     *         )
+     *     )
+     * )
+     */
      public function obtenerCantidadPedidos(Request $request)
     {
         // Obtener el idUsuario desde el token JWT en el frontend
@@ -862,6 +1446,58 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'cantidad' => $cantidadPedidos]);
     }
 
+
+
+    /**
+     * @OA\Get(
+     *     path="/api/listarDireccion/{idUsuario}",
+     *     summary="Obtener las direcciones de un usuario",
+     *     description="Este endpoint permite obtener todas las direcciones asociadas a un usuario específico.",
+     *     operationId="listarDireccion",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario para obtener sus direcciones",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Direcciones obtenidas correctamente.",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(
+     *                 type="object",
+     *                 @OA\Property(property="idDireccion", type="integer", example=1),
+     *                 @OA\Property(property="idUsuario", type="integer", example=1),
+     *                 @OA\Property(property="departamento", type="string", example="Lima"),
+     *                 @OA\Property(property="provincia", type="string", example="Lima"),
+     *                 @OA\Property(property="distrito", type="string", example="Miraflores"),
+     *                 @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 610"),
+     *                 @OA\Property(property="estado", type="string", example="usando"),
+     *                 @OA\Property(property="latitud", type="number", format="float", example="-12.0464"),
+     *                 @OA\Property(property="longitud", type="number", format="float", example="-77.0352")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado o no tiene direcciones.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Usuario no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al listar direcciones.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error interno al listar direcciones")
+     *         )
+     *     )
+     * )
+     */
     public function listarDireccion($idUsuario)
     {
         try {
@@ -887,6 +1523,53 @@ class ClienteController extends Controller
         }
     }
 
+
+    /**
+     * @OA\Get(
+     *     path="/api/listarDireccionPedido/{idUsuario}",
+     *     summary="Obtener la dirección activa de un usuario",
+     *     description="Este endpoint permite obtener la dirección activa (estado 'usando') de un usuario.",
+     *     operationId="listarDireccionPedido",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario para obtener su dirección activa",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dirección activa obtenida correctamente.",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="idDireccion", type="integer", example=1),
+     *             @OA\Property(property="idUsuario", type="integer", example=1),
+     *             @OA\Property(property="departamento", type="string", example="Lima"),
+     *             @OA\Property(property="provincia", type="string", example="Lima"),
+     *             @OA\Property(property="distrito", type="string", example="Miraflores"),
+     *             @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 610"),
+     *             @OA\Property(property="latitud", type="number", format="float", example="-12.0464"),
+     *             @OA\Property(property="longitud", type="number", format="float", example="-77.0352")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado o no tiene dirección activa.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Usuario no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al listar dirección activa.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error interno al listar direcciones")
+     *         )
+     *     )
+     * )
+     */
     public function listarDireccionPedido($idUsuario)
     {
         try {
@@ -914,7 +1597,58 @@ class ClienteController extends Controller
         }
     }
 
-
+    /**
+     * @OA\Post(
+     *     path="/api/agregarDireccion",
+     *     summary="Agregar una nueva dirección para un usuario",
+     *     description="Este endpoint permite agregar una nueva dirección para un usuario. Si el usuario ya tiene una dirección marcada como 'usando', esa dirección se actualizará a 'no usando'.",
+     *     operationId="agregarDireccion",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos necesarios para agregar una nueva dirección",
+     *         @OA\JsonContent(
+     *             required={"idUsuario", "departamento", "provincia", "distrito", "direccion"},
+     *             @OA\Property(property="idUsuario", type="integer", example=1, description="ID del usuario"),
+     *             @OA\Property(property="departamento", type="string", example="Lima", description="Departamento de la dirección"),
+     *             @OA\Property(property="provincia", type="string", example="Lima", description="Provincia de la dirección"),
+     *             @OA\Property(property="distrito", type="string", example="Miraflores", description="Distrito de la dirección"),
+     *             @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 610", description="Dirección completa"),
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Dirección agregada correctamente.",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="idDireccion", type="integer", example=1),
+     *             @OA\Property(property="idUsuario", type="integer", example=1),
+     *             @OA\Property(property="departamento", type="string", example="Lima"),
+     *             @OA\Property(property="provincia", type="string", example="Lima"),
+     *             @OA\Property(property="distrito", type="string", example="Miraflores"),
+     *             @OA\Property(property="direccion", type="string", example="Av. Pardo y Aliaga 610"),
+     *             @OA\Property(property="estado", type="string", example="usando"),
+     *             @OA\Property(property="latitud", type="number", format="float", example="-12.0464"),
+     *             @OA\Property(property="longitud", type="number", format="float", example="-77.0352")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error en los datos de entrada (validación).",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="El campo departamento es requerido")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al agregar dirección.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Error interno al agregar dirección")
+     *         )
+     *     )
+     * )
+     */
     public function agregarDireccion(Request $request)
     {
         try {
@@ -956,7 +1690,61 @@ class ClienteController extends Controller
             return response()->json(['error' => 'Error interno al agregar dirección'], 500);
         }
     }
-    
+
+
+    /**
+     * @OA\Delete(
+     *     path="/api/eliminarDireccion/{idDireccion}",
+     *     summary="Eliminar una dirección del usuario",
+     *     description="Este endpoint permite eliminar una dirección específica para un usuario. La dirección será eliminada si no está asociada a un pedido en proceso.",
+     *     operationId="eliminarDireccion",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idDireccion",
+     *         in="path",
+     *         required=true,
+     *         description="ID de la dirección que se desea eliminar",
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dirección eliminada exitosamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Dirección eliminada exitosamente.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Error: la dirección no puede ser eliminada porque está asociada a un pedido en proceso.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No se puede eliminar la dirección: existen pedidos en proceso con esta dirección asignada.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Error: dirección no encontrada.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Dirección no encontrada.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al eliminar la dirección.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error al eliminar la dirección."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado.")
+     *         )
+     *     )
+     * )
+     */
     public function eliminarDireccion($idDireccion)
     {
         try {
@@ -996,6 +1784,49 @@ class ClienteController extends Controller
         }
     }
 
+
+    /**
+     * @OA\Put(
+     *     path="/api/setDireccionUsando/{idDireccion}",
+     *     summary="Establecer una dirección como predeterminada (usando)",
+     *     description="Este endpoint permite actualizar el estado de una dirección específica a 'usando' y marcar todas las demás direcciones del usuario como 'no usando'.",
+     *     operationId="setDireccionUsando",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idDireccion",
+     *         in="path",
+     *         required=true,
+     *         description="ID de la dirección que se desea marcar como 'usando'",
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dirección actualizada correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Dirección actualizada a usando.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Dirección no encontrada.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Dirección no encontrada.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al actualizar la dirección.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Error al actualizar la dirección."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado.")
+     *         )
+     *     )
+     * )
+     */
     public function setDireccionUsando($idDireccion)
     {
         $direccion = DetalleDireccion::findOrFail($idDireccion);
@@ -1012,7 +1843,47 @@ class ClienteController extends Controller
     }
 
 
-
+    /**
+     * @OA\Post(
+     *     path="/api/enviarCodigo/{idUsuario}",
+     *     summary="Enviar un código de verificación al correo del usuario",
+     *     description="Este endpoint envía un código de verificación de 6 dígitos al correo electrónico del usuario especificado. El código se almacena en caché durante 5 minutos.",
+     *     operationId="enviarCodigo",
+     *     tags={"CLIENTE CONTROLLER"},
+     *     @OA\Parameter(
+     *         name="idUsuario",
+     *         in="path",
+     *         required=true,
+     *         description="ID del usuario al que se le enviará el código de verificación",
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Código enviado correctamente.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Usuario no encontrado.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Usuario no encontrado.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno al enviar el código.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Error al enviar el código."),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado.")
+     *         )
+     *     )
+     * )
+     */
     public function enviarCodigo($idUsuario)
     {
         $usuario = Usuario::findOrFail($idUsuario);
@@ -1024,6 +1895,7 @@ class ClienteController extends Controller
 
         return response()->json(['success' => true]);
     }
+
 
     public function verificarCodigo(Request $request, $idUsuario)
     {
@@ -1038,6 +1910,7 @@ class ClienteController extends Controller
         return response()->json(['success' => false, 'message' => 'Código incorrecto. Inténtalo nuevamente.']);
     }
 
+
     public function cambiarContrasena(Request $request)
     {
         $usuario = $request->user();
@@ -1047,6 +1920,7 @@ class ClienteController extends Controller
 
         return response()->json(['success' => true]);
     }
+
 
     public function cancelarPedido(Request $request)
     {
