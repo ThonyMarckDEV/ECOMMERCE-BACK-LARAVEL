@@ -12,6 +12,7 @@ use App\Models\Pago;
 use App\Models\Usuario;
 use App\Models\Producto;
 use App\Mail\NotificacionPagoCompletado;
+use App\Models\Stock;
 use Illuminate\Support\Facades\Mail;
 use FPDF;
 use Illuminate\Support\Facades\Log;
@@ -299,6 +300,7 @@ class PaymentController extends Controller
             }
 
             if ($estado_pago === 'approved') {
+                
                 if (in_array($pedido->estado, ['aprobando', 'completado'])) {
                     return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
                 }
@@ -306,15 +308,36 @@ class PaymentController extends Controller
                 $pedido->estado = 'aprobando';
                 $pedido->save();
 
-                //(ARREGLAR BIEN ACA QUE DESCUENTE BIEN PRQ SE QUEDA Y NO SABE QUE HACER XD)
-                // foreach ($pedido->detalles as $detalle) {
-                //     $producto = Producto::find($detalle->idProducto);
-                //     if ($producto) {
-                //         $producto->stock -= $detalle->cantidad;
-                //         $producto->save();
-                //     }
-                // }
+                //ACA DESCUEBTA EL STOCK VERIRFICAR SI ESTA BIEN
+                foreach ($pedido->detalles as $detalle) {
+                    // Obtener el registro de stock según idModelo y idTalla
+                    $stock = Stock::where('idModelo', $detalle->idModelo)
+                                  ->where('idTalla', $detalle->idTalla)
+                                  ->first();
+                
+                    if ($stock) {
+                        // Verificar si hay suficiente stock para descontar
+                        if ($stock->cantidad >= $detalle->cantidad) {
+                            // Descontar la cantidad del stock
+                            $stock->cantidad -= $detalle->cantidad;
+                            $stock->save();
+                        } else {
+                            // Manejar el caso de stock insuficiente
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Stock insuficiente para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla
+                            ], 400);
+                        }
+                    } else {
+                        // Manejar el caso en que no se encuentra un registro de stock
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No se encontró stock para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla
+                        ], 404);
+                    }
+                }
 
+                
                 if (Facturacion::where('status', 1)->exists()) {
                     $this->FacturacionActiva();
                 } else {
