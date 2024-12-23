@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Facturacion;
 use Illuminate\Http\Request;
 use App\Models\Pago;
 use App\Models\Pedido;
@@ -12,7 +13,7 @@ use App\Models\Usuario;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\NotificacionPagoCompletado;
 use FPDF;
-
+use Illuminate\Support\Facades\Http;
 // Mercado Pago
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
@@ -128,8 +129,7 @@ class MercadoPagoController extends Controller
    
     public function recibirPago(Request $request)
     {
-        Log::info('Recibiendo webhook de MercadoPago', ['request_data' => $request->all()]);
-
+    
         try {
             $id = $request->input('data')['id'] ?? null;
             $type = $request->input('type') ?? null;
@@ -189,6 +189,7 @@ class MercadoPagoController extends Controller
 
             // Actualizar estado del pedido
             if ($estado_pago === 'approved') {
+                
                 if (in_array($pedido->estado, ['aprobando', 'completado'])) {
                     Log::warning("El pedido ya fue procesado previamente", ['external_reference' => $externalReference]);
                     return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
@@ -206,44 +207,119 @@ class MercadoPagoController extends Controller
                     }
                 }
 
-                // Generar boleta y enviar correo
-                $usuario = Usuario::find($pedido->idUsuario);
-                if ($usuario) {
-                    $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
-                    $detallesPedido = [];
-                    $total = 0;
+                // Verificar si está activada la facturación
+                if (Facturacion::value('status') == 1) {
+                    // Construir el cuerpo de la solicitud
+                    $data = [
+                        "company" => [
+                            "ruc" => "20000000001",
+                        ],
+                        "client" => [
+                            "tipo_doc" => "1",
+                            "num_doc" => "61883939",
+                            "razon_social" => "Anthony Marck Mendoza Sanchez",
+                        ],
+                        "invoice" => [
+                            "ubl_version" => "2.1",
+                            "tipo_operacion" => "0101",
+                            "tipo_doc" => "01",
+                            "serie" => "F001",
+                            "correlativo" => "1",
+                            "fecha_emision" => now()->toISOString(),
+                            "tipo_moneda" => "PEN",
+                            "mto_oper_gravadas" => 1000.20,
+                            "mto_igv" => 180.04,
+                            "total_impuestos" => 180.84,
+                            "valor_venta" => 1000.20,
+                            "sub_total" => 1181.04,
+                            "mto_imp_venta" => 1181.04,
+                            "legend" => "SON MIL CIENTO OCHENTA Y UNO CON 04/100 SOLES",
+                        ],
+                        "details" => [
+                            [
+                                "cod_producto" => "001",
+                                "unidad" => "NIU",
+                                "cantidad" => 1,
+                                "mto_valor_unitario" => 1000.00,
+                                "descripcion" => "Producto A",
+                                "mto_base_igv" => 1000.00,
+                                "porcentaje_igv" => 18,
+                                "igv" => 180.00,
+                                "tip_afe_igv" => "10",
+                                "total_impuestos" => 180.00,
+                                "mto_valor_venta" => 1000.00,
+                                "mto_precio_unitario" => 1180.00,
+                            ],
+                            [
+                                "cod_producto" => "P002",
+                                "unidad" => "NIU",
+                                "cantidad" => 4,
+                                "mto_valor_unitario" => 0.05,
+                                "descripcion" => "BOLSA PLASTICA",
+                                "mto_base_igv" => 0.20,
+                                "porcentaje_igv" => 18,
+                                "igv" => 0.04,
+                                "tip_afe_igv" => "10",
+                                "factorIcbper" => 0.20,
+                                "icbper" => 0.80,
+                                "total_impuestos" => 0.84,
+                                "mto_valor_venta" => 0.20,
+                                "mto_precio_unitario" => 0.059,
+                            ],
+                        ],
+                    ];
 
-                    foreach ($pedido->detalles as $detalle) {
-                        $producto = Producto::find($detalle->idProducto);
-                        $detallesPedido[] = [
-                            'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
-                            'cantidad' => $detalle->cantidad,
-                            'subtotal' => $detalle->subtotal,
-                        ];
-                        $total += $detalle->subtotal;
+                    // Enviar los datos a la API
+                    $apiResponse = Http::post('http://localhost:8081/api/API_PDF', $data);
+
+                    if ($apiResponse->successful()) {
+                        // Manejar la respuesta exitosa de la API
+                        Log::info("Pago procesado correctamente para el pedido ");
+                    } else {
+                        // Manejar errores de la API
+                        Log::error("Error al procesar el pago para el pedido ");
                     }
 
-                    // Generación de boleta
-                    $pdfDirectory = "boletas/{$usuario->idUsuario}/{$externalReference}";
-                    $pdfFileName = "boleta_pedido_{$externalReference}.pdf";
-                    $pdfPath = public_path("{$pdfDirectory}/{$pdfFileName}");
+                }else{
+                    // Generar boleta y enviar correo
+                    $usuario = Usuario::find($pedido->idUsuario);
+                    if ($usuario) {
+                        $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
+                        $detallesPedido = [];
+                        $total = 0;
 
-                    if (!file_exists(public_path($pdfDirectory))) {
-                        mkdir(public_path($pdfDirectory), 0755, true);
+                        foreach ($pedido->detalles as $detalle) {
+                            $producto = Producto::find($detalle->idProducto);
+                            $detallesPedido[] = [
+                                'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
+                                'cantidad' => $detalle->cantidad,
+                                'subtotal' => $detalle->subtotal,
+                            ];
+                            $total += $detalle->subtotal;
+                        }
+
+                        // Generación de boleta
+                        $pdfDirectory = "boletas/{$usuario->idUsuario}/{$externalReference}";
+                        $pdfFileName = "boleta_pedido_{$externalReference}.pdf";
+                        $pdfPath = public_path("{$pdfDirectory}/{$pdfFileName}");
+
+                        if (!file_exists(public_path($pdfDirectory))) {
+                            mkdir(public_path($pdfDirectory), 0755, true);
+                        }
+
+                        // Generar PDF de la boleta
+                        $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
+
+                        // Enviar correo
+                        Mail::to($usuario->correo)->send(new NotificacionPagoCompletado(
+                            $nombreCompleto,
+                            $detallesPedido,
+                            $total,
+                            $pdfPath
+                        ));
+
+                        Log::info("Boleta generada y correo enviado", ['usuario' => $usuario->correo, 'pdf_path' => $pdfPath]);
                     }
-
-                    // Generar PDF de la boleta
-                    $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
-
-                    // Enviar correo
-                    Mail::to($usuario->correo)->send(new NotificacionPagoCompletado(
-                        $nombreCompleto,
-                        $detallesPedido,
-                        $total,
-                        $pdfPath
-                    ));
-
-                    Log::info("Boleta generada y correo enviado", ['usuario' => $usuario->correo, 'pdf_path' => $pdfPath]);
                 }
             }
 
@@ -287,3 +363,4 @@ class MercadoPagoController extends Controller
         $pdf->Output('F', $pdfPath);
     }
 }
+

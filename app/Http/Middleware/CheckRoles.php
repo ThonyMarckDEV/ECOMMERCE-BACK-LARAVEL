@@ -30,13 +30,13 @@ class CheckRoles
             $allowedRoles = ['admin', 'cliente', 'marca']; // Roles permitidos
 
             // Log para verificar los roles permitidos y el rol del usuario
-            Log::info('Roles permitidos: ' . implode(', ', $allowedRoles));
-            Log::info('Rol del usuario obtenido del token: ' . $userRole);
+        //    Log::info('Roles permitidos: ' . implode(', ', $allowedRoles));
+          //  Log::info('Rol del usuario obtenido del token: ' . $userRole);
 
             // Verificar si el rol del usuario está dentro de los roles permitidos
             if (!in_array($userRole, $allowedRoles)) {
                 // Log para ver los detalles del error
-                Log::info('Acceso denegado: El rol del usuario no coincide con los roles permitidos.');
+             //   Log::info('Acceso denegado: El rol del usuario no coincide con los roles permitidos.');
                 return response()->json(['error' => 'Acceso denegado: El rol del usuario no coincide con los roles permitidos.'], 403);
             }
 

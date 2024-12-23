@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Mail;
 use FPDF;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
-
+use App\Models\Facturacion;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -565,4 +567,7 @@ public function listarProductos()
         return response()->json($ingresos);
     }
     
+
+   
+
 }
