@@ -968,6 +968,164 @@ class ClienteController extends Controller
      *     )
      * )
      */
+    // public function crearPedido(Request $request)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+    //         // Validación de los datos de entrada
+    //         $request->validate([
+    //             'idUsuario' => 'required|integer',
+    //             'idCarrito' => 'required|integer',
+    //             'total' => 'required|numeric',
+    //             'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion'
+    //         ]);
+
+    //         // Extraemos los datos del request
+    //         $idUsuario = $request->input('idUsuario');
+    //         $idCarrito = $request->input('idCarrito');
+    //         $total = $request->input('total');
+    //         $idDireccion = $request->input('idDireccion');
+    //         $estadoPedido = 'pendiente';
+
+    //         // Obtener los detalles de la dirección desde la tabla detalle_direcciones
+    //         $direccionDetalles = DB::table('detalle_direcciones')
+    //             ->where('idDireccion', $idDireccion)
+    //             ->where('idUsuario', $idUsuario)
+    //             ->where('estado', 'usando')  // Solo seleccionar si el estado es 'usando'
+    //             ->first();
+
+    //         if (!$direccionDetalles) {
+    //             throw new \Exception('La dirección proporcionada no existe o no está en uso.');
+    //         }
+
+    //         // Extraemos los datos de la dirección
+    //         $departamento = $direccionDetalles->departamento;
+    //         $provincia = $direccionDetalles->provincia;
+    //         $distrito = $direccionDetalles->distrito;
+    //         $direccion = $direccionDetalles->direccion;
+    //         $latitud = $direccionDetalles->latitud;
+    //         $longitud = $direccionDetalles->longitud;
+
+    //         // Crear el pedido con los nuevos campos obtenidos de la dirección
+    //         $pedidoId = DB::table('pedidos')->insertGetId([
+    //             'idUsuario' => $idUsuario,
+    //             'total' => $total,
+    //             'estado' => $estadoPedido,
+    //             'departamento' => $departamento,
+    //             'provincia' => $provincia,
+    //             'distrito' => $distrito,
+    //             'direccion' => $direccion,
+    //             'latitud' => $latitud,
+    //             'longitud' => $longitud,
+    //             'fecha_pedido' => now(), // Se agrega la fecha actual del pedido
+    //         ]);
+
+    //         // Insertar la dirección en la tabla de detalle_direccion_pedido
+    //         DB::table('detalle_direccion_pedido')->insert([
+    //             'idPedido' => $pedidoId,
+    //             'idDireccion' => $idDireccion,
+    //         ]);
+
+    //         // Obtener los detalles del carrito
+    //         $detallesCarrito = DB::table('carrito_detalle')
+    //             ->where('idCarrito', $idCarrito)
+    //             ->get();
+
+    //         if ($detallesCarrito->isEmpty()) {
+    //             throw new \Exception('El carrito está vacío.');
+    //         }
+
+    //         $productos = [];
+    //         foreach ($detallesCarrito as $detalle) {
+    //             // Obtener el producto con el precio correcto desde la tabla productos
+    //             $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
+                
+    //             if (!$producto) {
+    //                 throw new \Exception("Producto no encontrado para el ID: {$detalle->idProducto}.");
+    //             }
+            
+    //             // Consultar la cantidad de stock disponible para el modelo y talla
+    //             $stock = DB::table('stock')
+    //                 ->where('idModelo', $detalle->idModelo)
+    //                 ->where('idTalla', $detalle->idTalla)
+    //                 ->value('cantidad');
+            
+    //             if ($stock === null) {
+    //                 throw new \Exception("No se encontró stock para el producto: {$producto->nombreProducto}, modelo: {$detalle->idModelo}, talla: {$detalle->idTalla}.");
+    //             }
+            
+    //             if ($stock < $detalle->cantidad) {
+    //                 throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}. Solo hay {$stock} unidades disponibles.");
+    //             }
+            
+    //             // Consultar el modelo y la talla
+    //             $modelo = DB::table('modelos')->where('idModelo', $detalle->idModelo)->value('nombreModelo');
+    //             $talla = DB::table('tallas')->where('idTalla', $detalle->idTalla)->value('nombreTalla');
+            
+    //             // Obtener el precio unitario del producto y calcular el subtotal
+    //             $precioUnitario = $producto->precio;
+    //             $subtotal = $detalle->cantidad * $precioUnitario;
+            
+    //             // Insertar en la tabla pedido_detalle con los nuevos campos (idModelo y idTalla)
+    //             DB::table('pedido_detalle')->insert([
+    //                 'idPedido' => $pedidoId,
+    //                 'idProducto' => $detalle->idProducto,
+    //                 'idModelo' => $detalle->idModelo,  // Nuevo campo
+    //                 'idTalla' => $detalle->idTalla,    // Nuevo campo
+    //                 'cantidad' => $detalle->cantidad,
+    //                 'precioUnitario' => $precioUnitario,
+    //                 'subtotal' => $subtotal,
+    //             ]);
+            
+    //             // Agregar al array de productos
+    //             $productos[] = (object) [
+    //                 'nombreProducto' => $producto->nombreProducto,
+    //                 'cantidad' => $detalle->cantidad,
+    //                 'precioUnitario' => $precioUnitario,
+    //                 'subtotal' => $subtotal,
+    //                 'talla' => $talla ?? 'Sin Talla',         // Aseguramos un valor por defecto
+    //                 'modelo' => $modelo ?? 'Sin Modelo',      // Aseguramos un valor por defecto
+    //             ];
+    //         }
+
+    //         // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
+    //         DB::table('pagos')->insert([
+    //             'idPedido' => $pedidoId,
+    //             'monto' => $total,
+    //             'estado_pago' => 'pendiente', // El pago aún no está completado
+    //         ]);
+
+    //         // Limpiar el carrito de detalles (vaciar el carrito)
+    //         DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
+
+    //         // Confirmamos la transacción
+    //         DB::commit();
+
+    //         // Enviar el correo de confirmación al usuario
+    //         $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
+    //         Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
+
+    //         // Respuesta exitosa
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Pedido creado exitosamente.',
+    //             'idPedido' => $pedidoId,
+    //         ], 201);
+
+    //     } catch (\Exception $e) {
+    //         // Si hay un error, revertimos la transacción
+    //         DB::rollBack();
+    //         Log::error('Error al crear pedido y pago: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error al crear el pedido.',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
+
     public function crearPedido(Request $request)
     {
         DB::beginTransaction();
@@ -980,25 +1138,25 @@ class ClienteController extends Controller
                 'total' => 'required|numeric',
                 'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion'
             ]);
-
+        
             // Extraemos los datos del request
             $idUsuario = $request->input('idUsuario');
             $idCarrito = $request->input('idCarrito');
             $total = $request->input('total');
             $idDireccion = $request->input('idDireccion');
             $estadoPedido = 'pendiente';
-
+        
             // Obtener los detalles de la dirección desde la tabla detalle_direcciones
             $direccionDetalles = DB::table('detalle_direcciones')
                 ->where('idDireccion', $idDireccion)
                 ->where('idUsuario', $idUsuario)
                 ->where('estado', 'usando')  // Solo seleccionar si el estado es 'usando'
                 ->first();
-
+        
             if (!$direccionDetalles) {
                 throw new \Exception('La dirección proporcionada no existe o no está en uso.');
             }
-
+        
             // Extraemos los datos de la dirección
             $departamento = $direccionDetalles->departamento;
             $provincia = $direccionDetalles->provincia;
@@ -1006,7 +1164,7 @@ class ClienteController extends Controller
             $direccion = $direccionDetalles->direccion;
             $latitud = $direccionDetalles->latitud;
             $longitud = $direccionDetalles->longitud;
-
+        
             // Crear el pedido con los nuevos campos obtenidos de la dirección
             $pedidoId = DB::table('pedidos')->insertGetId([
                 'idUsuario' => $idUsuario,
@@ -1020,23 +1178,25 @@ class ClienteController extends Controller
                 'longitud' => $longitud,
                 'fecha_pedido' => now(), // Se agrega la fecha actual del pedido
             ]);
-
+        
             // Insertar la dirección en la tabla de detalle_direccion_pedido
             DB::table('detalle_direccion_pedido')->insert([
                 'idPedido' => $pedidoId,
                 'idDireccion' => $idDireccion,
             ]);
-
+        
             // Obtener los detalles del carrito
             $detallesCarrito = DB::table('carrito_detalle')
                 ->where('idCarrito', $idCarrito)
                 ->get();
-
+        
             if ($detallesCarrito->isEmpty()) {
                 throw new \Exception('El carrito está vacío.');
             }
-
+        
             $productos = [];
+            $totalConIgv = 0;
+        
             foreach ($detallesCarrito as $detalle) {
                 // Obtener el producto con el precio correcto desde la tabla productos
                 $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
@@ -1059,10 +1219,18 @@ class ClienteController extends Controller
                     throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}. Solo hay {$stock} unidades disponibles.");
                 }
             
+                // Consultar el modelo y la talla
+                $modelo = DB::table('modelos')->where('idModelo', $detalle->idModelo)->value('nombreModelo');
+                $talla = DB::table('tallas')->where('idTalla', $detalle->idTalla)->value('nombreTalla');
+            
                 // Obtener el precio unitario del producto y calcular el subtotal
                 $precioUnitario = $producto->precio;
                 $subtotal = $detalle->cantidad * $precioUnitario;
-            
+        
+                // Calcular IGV (18%)
+                $igv = $subtotal * 0.18;
+                $subtotalConIgv = $subtotal + $igv;
+        
                 // Insertar en la tabla pedido_detalle con los nuevos campos (idModelo y idTalla)
                 DB::table('pedido_detalle')->insert([
                     'idPedido' => $pedidoId,
@@ -1071,41 +1239,47 @@ class ClienteController extends Controller
                     'idTalla' => $detalle->idTalla,    // Nuevo campo
                     'cantidad' => $detalle->cantidad,
                     'precioUnitario' => $precioUnitario,
-                    'subtotal' => $subtotal,
+                    'subtotal' => $subtotalConIgv,
                 ]);
-            
+        
+                // Agregar al array de productos
                 $productos[] = (object) [
                     'nombreProducto' => $producto->nombreProducto,
                     'cantidad' => $detalle->cantidad,
                     'precioUnitario' => $precioUnitario,
-                    'subtotal' => $subtotal,
+                    'subtotal' => $subtotalConIgv,
+                    'talla' => $talla ?? 'Sin Talla',         // Aseguramos un valor por defecto
+                    'modelo' => $modelo ?? 'Sin Modelo',      // Aseguramos un valor por defecto  
                 ];
+        
+                // Acumulamos el total con IGV
+                $totalConIgv += $subtotalConIgv;
             }
-
+        
             // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
             DB::table('pagos')->insert([
                 'idPedido' => $pedidoId,
-                'monto' => $total,
+                'monto' => $totalConIgv,  // El total ahora incluye IGV
                 'estado_pago' => 'pendiente', // El pago aún no está completado
             ]);
-
+        
             // Limpiar el carrito de detalles (vaciar el carrito)
             DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
-
+        
             // Confirmamos la transacción
             DB::commit();
-
+        
             // Enviar el correo de confirmación al usuario
             $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
-            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
-
+            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $totalConIgv));
+        
             // Respuesta exitosa
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido creado exitosamente.',
                 'idPedido' => $pedidoId,
             ], 201);
-
+        
         } catch (\Exception $e) {
             // Si hay un error, revertimos la transacción
             DB::rollBack();

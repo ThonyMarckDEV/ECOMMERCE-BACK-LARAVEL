@@ -45,14 +45,22 @@
         .price {
             font-weight: bold;
         }
-        ul {
-            list-style: none;
-            padding: 0;
+        table {
+            width: 100%;
             margin-bottom: 16px;
+            border-collapse: collapse;
         }
-        ul li {
-            font-size: 18px;
-            margin-bottom: 8px;
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4caf50;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #333;
         }
         .footer {
             font-size: 14px;
@@ -79,15 +87,26 @@
         <p>Su pedido con ID <strong class="highlight">{{ $idPedido }}</strong> ha sido creado con éxito en ECOMMERCE.</p>
         
         <h3>Detalles del Pedido:</h3>
-        <ul>
-            @foreach ($productos as $producto)
-            <li>
-                <span style="color: #34d399;">Cantidad:</span> <span class="price">{{ $producto->cantidad }}</span> - 
-                <span style="color: #34d399;">Precio:</span> <span class="price">S/ {{ $producto->precioUnitario }}</span> - 
-                <span style="color: #34d399;">Subtotal:</span> <span class="price">S/ {{ $producto->subtotal }}</span>
-            </li>
-            @endforeach
-        </ul>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($productos as $producto)
+                <tr>
+                    <td class="price">{{ $producto->nombreProducto }} - Talla: {{ $producto->talla }} - Modelo: {{ $producto->modelo }}</td>
+                    <td class="price">{{ $producto->cantidad }}</td>
+                    <td class="price">S/ {{ $producto->precioUnitario }}</td>
+                    <td class="price">S/ {{ $producto->subtotal }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
 
         <p><strong style="color: #34d399;">Total del Pedido:</strong> S/ {{ $total }}</p>
 

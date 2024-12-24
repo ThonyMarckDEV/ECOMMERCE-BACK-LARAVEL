@@ -12,7 +12,9 @@ use App\Models\Pago;
 use App\Models\Usuario;
 use App\Models\Producto;
 use App\Mail\NotificacionPagoCompletado;
+use App\Models\Modelo;
 use App\Models\Stock;
+use App\Models\Talla;
 use Illuminate\Support\Facades\Mail;
 use FPDF;
 use Illuminate\Support\Facades\Log;
@@ -109,148 +111,6 @@ class PaymentController extends Controller
     }
 
 
-    // public function recibirPago(Request $request)
-    // {
-    //     try {
-
-    //         // Obtener el ID del pago desde el request
-    //         $id = $request->input('data')['id'] ?? null;
-    //         $type = $request->input('type') ?? null;
-    
-    //        // Log::info("ID del pago recibido: {$id}, Tipo: {$type}");
-    
-    //         // Validar que el ID y el tipo estén presentes
-    //         if (!$id || $type !== 'payment') {
-    //             Log::warning('ID del pago o tipo no válido.');
-    //             return response()->json(['error' => 'ID del pago o tipo no válido'], 400);
-    //         }
-    
-    //         // URL de la API de Mercado Pago
-    //         $url = "https://api.mercadopago.com/v1/payments/{$id}";
-    //        // Log::info("URL para consultar el pago: {$url}");
-    
-    //         // Solicitar el pago a la API de Mercado Pago
-    //         $client = new Client();
-    //         $response = $client->request('GET', $url, [
-    //             'headers' => [
-    //                 'Authorization' => 'Bearer ' . env('MERCADOPAGO_ACCESS_TOKEN'),
-    //             ],
-    //         ]);
-    //         $pago = json_decode($response->getBody(), true);
-    
-    //        // Log::info('Respuesta obtenida de Mercado Pago:', $pago);
-    
-    //         // Verificar estado del pago
-    //         $estado_pago = $pago['status'];
-    //         $metodo_pago = $pago['payment_method_id'] ?? null;
-    //         $externalReference = $pago['external_reference'];
-    
-    
-    //         // Buscar el pago asociado al pedido
-    //         $pagoModel = Pago::where('idPedido', $externalReference)->first();
-    
-    //         if (!$pagoModel) {
-    //           //  Log::warning("Pago no encontrado para el pedido con referencia {$externalReference}.");
-    //             return response()->json(['success' => false, 'message' => 'Pago no encontrado para este pedido'],200);
-    //         }
-    
-    //         if ($pagoModel->estado_pago === 'completado') {
-    //            // Log::warning("El pago con ID {$id} ya ha sido completado previamente.");
-    //             return response()->json(['success' => false, 'message' => 'Este pago ya ha sido completado previamente'],200);
-    //         }
-    
-    //         // Actualizar el estado del pago a "completado"
-    //         $pagoModel->estado_pago = 'completado';
-    //         if ($metodo_pago) {
-    //             $pagoModel->metodo_pago = $metodo_pago;
-    //         }
-    //         $pagoModel->save();
-    
-    //         // Buscar el pedido asociado
-    //         $pedido = Pedido::with('detalles')->find($externalReference);
-    
-    //         if (!$pedido) {
-    //            // Log::warning("Pedido con referencia {$externalReference} no encontrado.");
-    //             return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-    //         }
-
-    //         // Actualizar estado del pedido
-    //         if ($estado_pago === 'approved') {
-                
-    //             if (in_array($pedido->estado, ['aprobando', 'completado'])) {
-    //                 Log::warning("El pedido ya fue procesado previamente", ['external_reference' => $externalReference]);
-    //                 return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
-    //             }
-
-    //             $pedido->estado = 'aprobando';
-    //             $pedido->save();
-
-    //             // Descontar stock de productos
-    //             foreach ($pedido->detalles as $detalle) {
-    //                 $producto = Producto::find($detalle->idProducto);
-    //                 if ($producto) {
-    //                     $producto->stock -= $detalle->cantidad;
-    //                     $producto->save();
-    //                 }
-    //             }
-
-
-    //                 // Comprobar si la tabla facturación tiene el estado 1
-    //                 if (Facturacion::where('status', 1)->exists()) {
-    //                     // Llamar a la función FacturacionActiva si la facturación está activada
-    //                     $this->FacturacionActiva();
-    //                 }else{
-    //                     // Generar boleta y enviar correo
-    //                     $usuario = Usuario::find($pedido->idUsuario);
-    //                     if ($usuario) {
-    //                         $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
-
-    //                         $detallesPedido = [];
-    //                         $total = 0;
-
-    //                         foreach ($pedido->detalles as $detalle) {
-    //                             $producto = Producto::find($detalle->idProducto);
-    //                             $detallesPedido[] = [
-    //                                 'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
-    //                                 'cantidad' => $detalle->cantidad,
-    //                                 'subtotal' => $detalle->subtotal,
-    //                             ];
-    //                             $total += $detalle->subtotal;
-    //                         }
-
-    //                         // Ruta para guardar la boleta
-    //                         $pdfDirectory = "boletas/{$usuario->idUsuario}/{$externalReference}";
-    //                         $pdfFileName = "boleta_pedido_{$externalReference}.pdf";
-    //                         $pdfPath = public_path("{$pdfDirectory}/{$pdfFileName}");
-
-    //                         // Crear el directorio si no existe
-    //                         if (!file_exists(public_path($pdfDirectory))) {
-    //                             mkdir(public_path($pdfDirectory), 0755, true);
-    //                         }
-                            
-    //                         // Generar el PDF
-    //                         $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
-
-    //                         // Enviar el correo con la boleta adjunta
-    //                         Mail::to($usuario->correo)->send(new NotificacionPagoCompletado(
-    //                             $nombreCompleto,
-    //                             $detallesPedido,
-    //                             $total,
-    //                             $pdfPath
-    //                         ));
-    //                     }
-    //                 }  
-    //         }
-    
-    //         //Log::info("Estado de pago y pedido actualizados correctamente para el ID {$id}.");
-    //         return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'],200);
-    //     } catch (\Exception $e) {
-    //        // Log::error('Error al procesar el webhook: ' . $e->getMessage());
-    //         return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
-
     public function recibirPago(Request $request)
     {
         try {
@@ -308,6 +168,9 @@ class PaymentController extends Controller
                 $pedido->estado = 'aprobando';
                 $pedido->save();
 
+                // Asignar el ID del pedido
+                $idPedido = $pedido->idPedido;
+
                 //ACA DESCUEBTA EL STOCK VERIRFICAR SI ESTA BIEN
                 foreach ($pedido->detalles as $detalle) {
                     // Obtener el registro de stock según idModelo y idTalla
@@ -339,7 +202,7 @@ class PaymentController extends Controller
 
                 
                 if (Facturacion::where('status', 1)->exists()) {
-                    $this->FacturacionActiva();
+                    $this->FacturacionActiva($idPedido);
                 } else {
                     $usuario = Usuario::find($pedido->idUsuario);
                     if ($usuario) {
@@ -421,67 +284,99 @@ class PaymentController extends Controller
     }
 
 
-    public function FacturacionActiva()
-    {
-        try{
-                    Log::info("La facturación está activada, procesando la API.");
-                    // Construir el cuerpo de la solicitud
-                    $data = [
-                        "client" => [
-                            "tipo_doc" => "6",
-                            "num_doc" => "20000000001",
-                            "razon_social" => "ANTHONY MARCK MENDOZA SANCHEZ",
-                        ],
-                        "invoice" => [
-                            "ubl_version" => "2.1",
-                            "tipo_operacion" => "0101",
-                            "tipo_doc" => "01",
-                            "serie" => "F001",
-                            "correlativo" => "1",
-                            "fecha_emision" => now()->toISOString(),
-                            "tipo_moneda" => "PEN",
-                            "mto_oper_gravadas" => 1000.20,
-                            "mto_igv" => 180.04,
-                            "total_impuestos" => 180.84,
-                            "valor_venta" => 1000.20,
-                            "sub_total" => 1181.04,
-                            "mto_imp_venta" => 1181.04,
-                            "legend" => "SON MIL CIENTO OCHENTA Y UNO CON 04/100 SOLES",
-                        ],
-                        "details" => [
-                            [
-                                "cod_producto" => "001",
-                                "unidad" => "NIU",
-                                "cantidad" => 1,
-                                "mto_valor_unitario" => 1000.00,
-                                "descripcion" => "Producto A",
-                                "mto_base_igv" => 1000.00,
-                                "porcentaje_igv" => 18,
-                                "igv" => 180.00,
-                                "tip_afe_igv" => "10",
-                                "total_impuestos" => 180.00,
-                                "mto_valor_venta" => 1000.00,
-                                "mto_precio_unitario" => 1180.00,
-                            ],
-                            [
-                                "cod_producto" => "P002",
-                                "unidad" => "NIU",
-                                "cantidad" => 4,
-                                "mto_valor_unitario" => 0.05,
-                                "descripcion" => "BOLSA PLASTICA",
-                                "mto_base_igv" => 0.20,
-                                "porcentaje_igv" => 18,
-                                "igv" => 0.04,
-                                "tip_afe_igv" => "10",
-                                "factorIcbper" => 0.20,
-                                "icbper" => 0.80,
-                                "total_impuestos" => 0.84,
-                                "mto_valor_venta" => 0.20,
-                                "mto_precio_unitario" => 0.059,
-                            ],
-                        ],
-                    ];
 
+    public function FacturacionActiva($idPedido)
+    {
+        try {
+                    Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
+            
+                    // Obtener el pedido
+                    $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
+                        ->where('idPedido', $idPedido)
+                        ->first();
+            
+                    if (!$pedido) {
+                        return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+                    }
+            
+                    // Obtener los datos del cliente
+                    $cliente = $pedido->usuario; // Relación con el modelo Usuario
+                    if (!$cliente) {
+                        return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+                    }
+            
+                    // Crear estructura de cliente
+                    $clientData = [
+                        "tipo_doc" => "6", // 6(RUC) - 1(DNI)
+                        "num_doc" => "20000000001", // Número de documento de ejemplo
+                        "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
+                        "correo" => $cliente->correo, // Agregando el correo del cliente
+                    ];
+            
+                   // Inicializamos el arreglo de detalles
+                    $details = [];
+
+                    // Obtenemos los detalles de la base de datos (suponiendo que tienes un modelo de Producto y pedido_detalle)
+                    foreach ($pedido->detalles as $detalle) {
+                        // Buscar el producto, talla y modelo correspondiente
+                        $producto = Producto::find($detalle->idProducto);
+                        $talla = Talla::find($detalle->idTalla);
+                        $modelo = Modelo::find($detalle->idModelo);
+
+                        // Comprobamos que los objetos existan antes de continuar
+                        if ($producto && $talla && $modelo) {
+                            // Construir la descripción concatenada
+                            $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+
+                            // Añadir los detalles de la factura al arreglo
+                            $details[] = [
+                                "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
+                                "unidad" => "NIU",  // Unidad de medida
+                                "cantidad" => $detalle->cantidad,
+                                "mto_valor_unitario" => $detalle->precioUnitario,
+                                "descripcion" => $descripcion,
+                                "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
+                                "porcentaje_igv" => 18,  // Porcentaje fijo de IGV, puedes ajustarlo si varía
+                                "igv" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+                                "tip_afe_igv" => "10",  // Código de afectación IGV (gravado estándar)
+                                "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+                                "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
+                                "mto_precio_unitario" => $detalle->precioUnitario * 1.18,
+                            ];
+                        }
+                    }
+            
+                    // Calcular totales
+                    $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
+                    $totalIGV = array_sum(array_column($details, 'igv'));
+                    $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
+                    $totalVenta = $totalGravadas + $totalImpuestos;
+            
+                    // Crear la estructura de la factura
+                    $invoiceData = [
+                        "ubl_version" => "2.1",
+                        "tipo_operacion" => "0101",
+                        "tipo_doc" => "01", //01(FACTURA) (03)BOLETA
+                        "serie" => "F001", //VER COMO HACER LO DE LA SERIE
+                        "correlativo" => "1", // Ajustar según tu lógica
+                        "fecha_emision" => now()->toISOString(),
+                        "tipo_moneda" => "PEN",
+                        "mto_oper_gravadas" => $totalGravadas,
+                        "mto_igv" => $totalIGV,
+                        "total_impuestos" => $totalImpuestos,
+                        "valor_venta" => $totalGravadas,
+                        "sub_total" => $totalVenta,
+                        "mto_imp_venta" => $totalVenta,
+                        "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
+                    ];
+            
+                    // Construir el cuerpo final de la solicitud
+                    $data = [
+                        "client" => $clientData,
+                        "invoice" => $invoiceData,
+                        "details" => $details,
+                    ];
+            
                     // Enviar los datos a la API
                     $apiResponse = Http::post('http://localhost:8001/api/API_PDF', $data);
 
@@ -498,6 +393,60 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
            // Log::error('Error al procesar el webhook: ' . $e->getMessage());
             return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function numerodosletras($number)
+    {
+        $units = [
+            '', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'
+        ];
+        $tens = [
+            '', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'
+        ];
+        $teens = [
+            'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'
+        ];
+    
+        $hundreds = [
+            '', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'
+        ];
+    
+        if ($number == 0) {
+            return 'cero';
+        }
+    
+        $parts = explode('.', number_format($number, 2, '.', ''));
+        $integerPart = (int)$parts[0];
+        $decimalPart = isset($parts[1]) ? (int)$parts[1] : 0;
+    
+        $result = $this->convertNumberToWords($integerPart, $units, $tens, $teens, $hundreds);
+        if ($decimalPart > 0) {
+            $result .= " con " . $this->convertNumberToWords($decimalPart, $units, $tens, $teens, $hundreds) . " centavos";
+        }
+    
+        return $result;
+    }
+    
+    private function convertNumberToWords($number, $units, $tens, $teens, $hundreds)
+    {
+        if ($number < 10) {
+            return $units[$number];
+        } elseif ($number < 20) {
+            return $number == 10 ? 'diez' : $teens[$number - 11];
+        } elseif ($number < 100) {
+            $tensPart = $tens[intval($number / 10)];
+            $unitsPart = $number % 10;
+            return $tensPart . ($unitsPart ? ' y ' . $units[$unitsPart] : '');
+        } elseif ($number < 1000) {
+            $hundredsPart = $hundreds[intval($number / 100)];
+            $remainder = $number % 100;
+            return $hundredsPart . ($remainder ? ' ' . $this->convertNumberToWords($remainder, $units, $tens, $teens, $hundreds) : '');
+        } else {
+            // Manejar números mayores (miles, millones, etc.)
+            $thousands = intval($number / 1000);
+            $remainder = $number % 1000;
+            return $this->convertNumberToWords($thousands, $units, $tens, $teens, $hundreds) . " mil" . ($remainder ? ' ' . $this->convertNumberToWords($remainder, $units, $tens, $teens, $hundreds) : '');
         }
     }
 
