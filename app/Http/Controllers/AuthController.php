@@ -335,7 +335,7 @@ class AuthController extends Controller
                    'rol' => $request->rol,
                    'nombres' => $request->nombres,
                    'apellidos' => $request->apellidos,
-                   'dni' => $request->dni,
+                   'dni' => null,
                    'correo' => $request->correo,
                    'edad' => $request->edad ?? null,
                    'nacimiento' => $request->nacimiento ?? null,

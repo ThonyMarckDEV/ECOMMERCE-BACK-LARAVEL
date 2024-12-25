@@ -284,117 +284,239 @@ class PaymentController extends Controller
     }
 
 
+    //ESTE ES PARA FACTURA
+    // public function FacturacionActiva($idPedido)
+    // {
+    //     try {
+    //                 Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
+            
+    //                 // Obtener el pedido
+    //                 $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
+    //                     ->where('idPedido', $idPedido)
+    //                     ->first();
+            
+    //                 if (!$pedido) {
+    //                     return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+    //                 }
+            
+    //                 // Obtener los datos del cliente
+    //                 $cliente = $pedido->usuario; // Relación con el modelo Usuario
+    //                 if (!$cliente) {
+    //                     return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+    //                 }
+            
+    //                 // Crear estructura de company
+    //                 $companyData = [
+    //                     "ruc" => "20000000001", // 6(RUC) - 1(DNI)
+    //                 ];
 
+    //                 // Crear estructura de cliente
+    //                 $clientData = [
+    //                     "tipo_doc" => "1", // 6(RUC) - 1(DNI)
+    //                     "num_doc" => $cliente->dni, // Número de documento de ejemplo
+    //                     "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
+    //                     "correo" => $cliente->correo, // Agregando el correo del cliente
+    //                 ];
+            
+    //                // Inicializamos el arreglo de detalles
+    //                 $details = [];
+
+    //                 // Obtenemos los detalles de la base de datos (suponiendo que tienes un modelo de Producto y pedido_detalle)
+    //                 foreach ($pedido->detalles as $detalle) {
+    //                     // Buscar el producto, talla y modelo correspondiente
+    //                     $producto = Producto::find($detalle->idProducto);
+    //                     $talla = Talla::find($detalle->idTalla);
+    //                     $modelo = Modelo::find($detalle->idModelo);
+
+    //                     // Comprobamos que los objetos existan antes de continuar
+    //                     if ($producto && $talla && $modelo) {
+    //                         // Construir la descripción concatenada
+    //                         $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+
+    //                         // Añadir los detalles de la factura al arreglo
+    //                         $details[] = [
+    //                             "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
+    //                             "unidad" => "NIU",  // Unidad de medida
+    //                             "cantidad" => $detalle->cantidad,
+    //                             "mto_valor_unitario" => $detalle->precioUnitario,
+    //                             "descripcion" => $descripcion,
+    //                             "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
+    //                             "porcentaje_igv" => 18,  // Porcentaje fijo de IGV, puedes ajustarlo si varía
+    //                             "igv" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+    //                             "tip_afe_igv" => "10",  // Código de afectación IGV (gravado estándar)
+    //                             "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+    //                             "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
+    //                             "mto_precio_unitario" => $detalle->precioUnitario * 1.18,
+    //                         ];
+    //                     }
+    //                 }
+            
+    //                 // Calcular totales
+    //                 $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
+    //                 $totalIGV = array_sum(array_column($details, 'igv'));
+    //                 $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
+    //                 $totalVenta = $totalGravadas + $totalImpuestos;
+            
+    //                 // Crear la estructura de la factura
+    //                 $invoiceData = [
+    //                     "ubl_version" => "2.1",
+    //                     "tipo_operacion" => "0101",
+    //                     "tipo_doc" => "01", //01(FACTURA) (03)BOLETA
+    //                     "serie" => "F001", //VER COMO HACER LO DE LA SERIE
+    //                     "correlativo" => "1", // Ajustar según tu lógica
+    //                     "fecha_emision" => now()->toISOString(),
+    //                     "tipo_moneda" => "PEN",
+    //                     "mto_oper_gravadas" => $totalGravadas,
+    //                     "mto_igv" => $totalIGV,
+    //                     "total_impuestos" => $totalImpuestos,
+    //                     "valor_venta" => $totalGravadas,
+    //                     "sub_total" => $totalVenta,
+    //                     "mto_imp_venta" => $totalVenta,
+    //                     "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
+    //                 ];
+            
+    //                 // Construir el cuerpo final de la solicitud
+    //                 $data = [
+    //                     "company"=>$companyData,
+    //                     "client" => $clientData,
+    //                     "invoice" => $invoiceData,
+    //                     "details" => $details,
+    //                 ];
+            
+    //                 // Enviar los datos a la API
+    //                 $apiResponse = Http::post('http://localhost:8001/api/API_PDF', $data);
+
+    //                 if ($apiResponse->successful()) {
+    //                     // Manejar la respuesta exitosa de la API
+    //                     Log::info("Pago procesado correctamente para el pedido ");
+    //                 } else {
+    //                     // Manejar errores de la API
+    //                     Log::error("Error al procesar el pago para el pedido ");
+    //                 }
+                
+    //         //Log::info("Estado de pago y pedido actualizados correctamente para el ID {$id}.");
+    //         return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'],200);
+    //     } catch (\Exception $e) {
+    //        // Log::error('Error al procesar el webhook: ' . $e->getMessage());
+    //         return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
+    //ESTE ES PARA BOLETA
     public function FacturacionActiva($idPedido)
     {
         try {
-                    Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
-            
-                    // Obtener el pedido
-                    $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
-                        ->where('idPedido', $idPedido)
-                        ->first();
-            
-                    if (!$pedido) {
-                        return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-                    }
-            
-                    // Obtener los datos del cliente
-                    $cliente = $pedido->usuario; // Relación con el modelo Usuario
-                    if (!$cliente) {
-                        return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-                    }
-            
-                    // Crear estructura de cliente
-                    $clientData = [
-                        "tipo_doc" => "6", // 6(RUC) - 1(DNI)
-                        "num_doc" => "20000000001", // Número de documento de ejemplo
-                        "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
-                        "correo" => $cliente->correo, // Agregando el correo del cliente
+            Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
+
+            // Obtener el pedido
+            $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
+                ->where('idPedido', $idPedido)
+                ->first();
+
+            if (!$pedido) {
+                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+            }
+
+            // Obtener los datos del cliente
+            $cliente = $pedido->usuario; // Relación con el modelo Usuario
+            if (!$cliente) {
+                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+            }
+
+            // Crear estructura de company
+            $companyData = [
+                "ruc" => "20000000001",
+            ];
+
+            // Crear estructura de cliente
+            $clientData = [
+                "tipo_doc" => "1", // 6(RUC) - 1(DNI)
+                "num_doc" => $cliente->dni, // Número de documento
+                "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
+                "correo" => $cliente->correo,
+            ];
+
+            // Inicializamos el arreglo de detalles
+            $details = [];
+
+            // Obtenemos los detalles de la base de datos
+            foreach ($pedido->detalles as $detalle) {
+                $producto = Producto::find($detalle->idProducto);
+                $talla = Talla::find($detalle->idTalla);
+                $modelo = Modelo::find($detalle->idModelo);
+
+                if ($producto && $talla && $modelo) {
+                    $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+
+                    $details[] = [
+                        "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
+                        "unidad" => "NIU",
+                        "cantidad" => $detalle->cantidad,
+                        "mto_valor_unitario" => $detalle->precioUnitario,
+                        "descripcion" => $descripcion,
+                        "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
+                        "porcentaje_igv" => 18,
+                        "igv" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+                        "tip_afe_igv" => "10",
+                        "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
+                        "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
+                        "mto_precio_unitario" => $detalle->precioUnitario * 1.18,
                     ];
-            
-                   // Inicializamos el arreglo de detalles
-                    $details = [];
+                }
+            }
 
-                    // Obtenemos los detalles de la base de datos (suponiendo que tienes un modelo de Producto y pedido_detalle)
-                    foreach ($pedido->detalles as $detalle) {
-                        // Buscar el producto, talla y modelo correspondiente
-                        $producto = Producto::find($detalle->idProducto);
-                        $talla = Talla::find($detalle->idTalla);
-                        $modelo = Modelo::find($detalle->idModelo);
+            // Calcular totales
+            $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
+            $totalIGV = array_sum(array_column($details, 'igv'));
+            $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
+            $totalVenta = $totalGravadas + $totalImpuestos;
 
-                        // Comprobamos que los objetos existan antes de continuar
-                        if ($producto && $talla && $modelo) {
-                            // Construir la descripción concatenada
-                            $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+            // Crear la estructura de la factura
+            $invoiceData = [
+                "ubl_version" => "2.1",
+                "tipo_operacion" => "0101",
+                "tipo_doc" => "03", // 01(FACTURA) o 03(BOLETA)
+                "serie" => "B001",
+                "correlativo" => "1",
+                "fecha_emision" => now()->toISOString(),
+                "tipo_moneda" => "PEN",
+                "mto_oper_gravadas" => $totalGravadas,
+                "mto_igv" => $totalIGV,
+                "total_impuestos" => $totalImpuestos,
+                "valor_venta" => $totalGravadas,
+                "sub_total" => $totalVenta,
+                "mto_imp_venta" => $totalVenta,
+                "legends" => [
+                    [
+                        "code" => "1000",
+                        "value" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES"
+                    ]
+                ]
+            ];
 
-                            // Añadir los detalles de la factura al arreglo
-                            $details[] = [
-                                "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
-                                "unidad" => "NIU",  // Unidad de medida
-                                "cantidad" => $detalle->cantidad,
-                                "mto_valor_unitario" => $detalle->precioUnitario,
-                                "descripcion" => $descripcion,
-                                "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
-                                "porcentaje_igv" => 18,  // Porcentaje fijo de IGV, puedes ajustarlo si varía
-                                "igv" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
-                                "tip_afe_igv" => "10",  // Código de afectación IGV (gravado estándar)
-                                "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * 0.18,
-                                "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
-                                "mto_precio_unitario" => $detalle->precioUnitario * 1.18,
-                            ];
-                        }
-                    }
-            
-                    // Calcular totales
-                    $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
-                    $totalIGV = array_sum(array_column($details, 'igv'));
-                    $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
-                    $totalVenta = $totalGravadas + $totalImpuestos;
-            
-                    // Crear la estructura de la factura
-                    $invoiceData = [
-                        "ubl_version" => "2.1",
-                        "tipo_operacion" => "0101",
-                        "tipo_doc" => "01", //01(FACTURA) (03)BOLETA
-                        "serie" => "F001", //VER COMO HACER LO DE LA SERIE
-                        "correlativo" => "1", // Ajustar según tu lógica
-                        "fecha_emision" => now()->toISOString(),
-                        "tipo_moneda" => "PEN",
-                        "mto_oper_gravadas" => $totalGravadas,
-                        "mto_igv" => $totalIGV,
-                        "total_impuestos" => $totalImpuestos,
-                        "valor_venta" => $totalGravadas,
-                        "sub_total" => $totalVenta,
-                        "mto_imp_venta" => $totalVenta,
-                        "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
-                    ];
-            
-                    // Construir el cuerpo final de la solicitud
-                    $data = [
-                        "client" => $clientData,
-                        "invoice" => $invoiceData,
-                        "details" => $details,
-                    ];
-            
-                    // Enviar los datos a la API
-                    $apiResponse = Http::post('http://localhost:8001/api/API_PDF', $data);
+            // Construir el cuerpo final de la solicitud
+            $data = [
+                "company" => $companyData,
+                "client" => $clientData,
+                "invoice" => $invoiceData,
+                "details" => $details,
+            ];
 
-                    if ($apiResponse->successful()) {
-                        // Manejar la respuesta exitosa de la API
-                        Log::info("Pago procesado correctamente para el pedido ");
-                    } else {
-                        // Manejar errores de la API
-                        Log::error("Error al procesar el pago para el pedido ");
-                    }
-                
-            //Log::info("Estado de pago y pedido actualizados correctamente para el ID {$id}.");
-            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'],200);
+            // Enviar los datos a la API
+            $apiResponse = Http::post('http://localhost:8001/api/API_BOLETA_PDF', $data);
+
+            if ($apiResponse->successful()) {
+                Log::info("Pago procesado correctamente para el pedido {$idPedido}");
+            } else {
+                Log::error("Error al procesar el pago para el pedido {$idPedido}");
+            }
+
+            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'], 200);
         } catch (\Exception $e) {
-           // Log::error('Error al procesar el webhook: ' . $e->getMessage());
             return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
     }
+
 
     public function numerodosletras($number)
     {

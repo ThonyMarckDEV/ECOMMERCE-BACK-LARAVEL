@@ -64,6 +64,8 @@ use App\Http\Controllers\AuthController;
     Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () { 
         Route::post('register', [AdminController::class, 'register']);
 
+        Route::post('/categorias', [AdminController::class, 'agregarCategorias']);
+
         Route::put('/actualizarUsuario/{id}', [AdminController::class, 'actualizarUsuario']);
         Route::delete('/eliminarUsuario/{id}', [AdminController::class, 'eliminarUsuario']);
 

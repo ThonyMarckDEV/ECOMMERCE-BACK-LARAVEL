@@ -193,32 +193,32 @@ class AdminController extends Controller
      // Obtener todas las categorías
      public function listarCategorias()
      {
-         $categorias = Categoria::all();
+         $categorias = Categoria::take(8)->get(); // Obtener las primeras 8 categorías
          return response()->json(['success' => true, 'data' => $categorias], 200);
      }
+     
 
+    // Listar todos los productos con el nombre de la categoría y URL completa de la imagen
+    public function listarProductos()
+    {
+        $productos = Producto::with('categoria:idCategoria,nombreCategoria')->get();
 
-// Listar todos los productos con el nombre de la categoría y URL completa de la imagen
-public function listarProductos()
-{
-    $productos = Producto::with('categoria:idCategoria,nombreCategoria')->get();
+        // Mapeo para agregar el nombre de la categoría y la URL completa de la imagen
+        $productos = $productos->map(function ($producto) {
+            return [
+                'idProducto' => $producto->idProducto,
+                'nombreProducto' => $producto->nombreProducto,
+                'descripcion' => $producto->descripcion,
+                'precio' => $producto->precio,
+                'stock' => $producto->stock,
+                'imagen' => $producto->imagen ? url("storage/{$producto->imagen}") : null, // URL completa de la imagen
+                'idCategoria' => $producto->idCategoria,
+                'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : null,
+            ];
+        });
 
-    // Mapeo para agregar el nombre de la categoría y la URL completa de la imagen
-    $productos = $productos->map(function ($producto) {
-        return [
-            'idProducto' => $producto->idProducto,
-            'nombreProducto' => $producto->nombreProducto,
-            'descripcion' => $producto->descripcion,
-            'precio' => $producto->precio,
-            'stock' => $producto->stock,
-            'imagen' => $producto->imagen ? url("storage/{$producto->imagen}") : null, // URL completa de la imagen
-            'idCategoria' => $producto->idCategoria,
-            'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : null,
-        ];
-    });
-
-    return response()->json(['success' => true, 'data' => $productos], 200);
-}
+        return response()->json(['success' => true, 'data' => $productos], 200);
+    }
 
     // Crear un nuevo producto
     public function agregarProducto(Request $request)
@@ -307,24 +307,37 @@ public function listarProductos()
     }
 
 
-    public function agregarCategoria(Request $request)
+    public function agregarCategorias(Request $request)
     {
+        // Validar los datos de entrada
         $request->validate([
             'nombreCategoria' => 'required|string|max:255',
-            'descripcion' => 'nullable|string|max:500',
+            'descripcion' => 'nullable|string|max:60',
+            'imagen' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Validación de imagen
         ]);
 
+        // Obtener el nombre de la categoría
+        $nombreCategoria = $request->input('nombreCategoria');
+        $descripcion = $request->input('descripcion', null);
+
+        // Guardar la imagen en el directorio correspondiente
+        $imagen = $request->file('imagen');
+        $rutaImagen = 'imagenes/categorias/' . $nombreCategoria . '/' . $imagen->getClientOriginalName();
+        Storage::disk('public')->putFileAs('imagenes/categorias/' . $nombreCategoria, $imagen, $imagen->getClientOriginalName());
+
+        // Crear la categoría en la base de datos
         $categoria = Categoria::create([
-            'nombreCategoria' => $request->nombreCategoria,
-            'descripcion' => $request->descripcion,
+            'nombreCategoria' => $nombreCategoria,
+            'descripcion' => $descripcion,
+            'imagen' => $rutaImagen, // Guardar la ruta de la imagen
         ]);
 
         return response()->json([
-            'success' => true,
             'message' => 'Categoría agregada exitosamente',
-            'data' => $categoria
-        ]);
+            'categoria' => $categoria
+        ], 200);
     }
+
 
       // Método para actualizar una categoría
       public function actualizarCategoria(Request $request, $id)
