@@ -335,7 +335,7 @@ class AuthController extends Controller
                    'rol' => $request->rol,
                    'nombres' => $request->nombres,
                    'apellidos' => $request->apellidos,
-                   'dni' => null,
+                   'dni' => $request->dni, 
                    'correo' => $request->correo,
                    'edad' => $request->edad ?? null,
                    'nacimiento' => $request->nacimiento ?? null,
@@ -391,7 +391,7 @@ class AuthController extends Controller
                        'rol' => 'cliente',
                        'nombres' => $payload['given_name'],
                        'apellidos' => $payload['family_name'],
-                       'dni' => '00000000', // Establecer un valor por defecto o generar uno
+                       'dni' => null, // Establecer un valor por defecto o generar uno
                        'password' => bcrypt(Str::random(16)), // Genera una contraseña aleatoria
                        'status' => 'loggedOff',
                        'emailVerified' => 1, // Establecer email_verified como 1 para usuarios de Google
