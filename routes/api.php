@@ -41,6 +41,8 @@ use App\Http\Controllers\AuthController;
 
         Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
 
+        Route::post('actualizar-comprobante', [PaymentController::class, 'actualizarComprobante']);
+ 
         Route::post('test2api', [AdminController::class, 'test2api']);
 //================================================================================================
     //RUTAS  AUTH PROTEGIDAS
