@@ -116,7 +116,7 @@ class PaymentController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'idPedido' => 'required|integer|exists:pedidos,id',
+                'idPedido' => 'required|integer|exists:pedidos,idPedido',
                 'tipo_comprobante' => 'required|in:boleta,factura',
                 'ruc' => 'nullable|required_if:tipo_comprobante,factura|string|size:11',
             ]);
@@ -129,15 +129,8 @@ class PaymentController extends Controller
                 ], 422);
             }
 
-            $pedido = Pedido::findOrFail($request->pedido_id);
+            $pedido = Pedido::findOrFail($request->idPedido);
 
-            // Verificar que el pedido pertenece al usuario autenticado
-            if ($pedido->usuario_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tienes permiso para modificar este pedido'
-                ], 403);
-            }
 
             // Verificar que el pedido está en estado pendiente
             if ($pedido->estado !== 'pendiente') {
@@ -378,7 +371,7 @@ class PaymentController extends Controller
     public function FacturacionActivaFactura($idPedido,$ruc)
     {
         try {
-                    Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
+                    Log::info("La facturación está activada, procesando la API Factura para el pedido: {$idPedido}");
             
                     // Obtener el pedido
                     $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
@@ -502,12 +495,12 @@ class PaymentController extends Controller
     public function FacturacionActivaBoleta($idPedido)
     {
         try {
-            Log::info("La facturación está activada, procesando la API para el pedido: {$idPedido}");
+            Log::info("La facturación está activada, procesando la API Boleta para el pedido: {$idPedido}");
 
             // Obtener el pedido
             $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
-                ->where('idPedido', $idPedido)
-                ->first();
+            ->where('idPedido', $idPedido)
+            ->first();
 
             if (!$pedido) {
                 return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
@@ -519,18 +512,16 @@ class PaymentController extends Controller
                 return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
             }
 
-              // Obtener el pedido
-              $pedido = Pedido::where('idPedido', $idPedido)
-              ->first();
+            $empresa = Empresa::first();
 
             // Crear estructura de company
             $companyData = [
-                "ruc" => "20000000001",
+                "ruc" => $empresa->ruc,
             ];
 
             // Crear estructura de cliente
             $clientData = [
-                "tipo_doc" => "1", // 6(RUC) - 1(DNI)
+                "tipo_doc" => "1",
                 "num_doc" => $cliente->dni, // Número de documento
                 "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
                 "correo" => $cliente->correo,

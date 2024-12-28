@@ -1176,7 +1176,9 @@ class ClienteController extends Controller
                 'direccion' => $direccion,
                 'latitud' => $latitud,
                 'longitud' => $longitud,
-                'fecha_pedido' => now(), // Se agrega la fecha actual del pedido
+                'fecha_pedido' => now(), 
+                'tipo_comprobante' =>null, 
+                'ruc' => null,
             ]);
         
             // Insertar la dirección en la tabla de detalle_direccion_pedido
