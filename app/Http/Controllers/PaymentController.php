@@ -48,7 +48,6 @@ class PaymentController extends Controller
         $idPedido = $request->input('idPedido');
         $detalles = $request->input('detalles');
         $total = $request->input('total');
-       // $correo = $request->input('correo');
         
         // Crear una instancia del cliente de preferencias de MercadoPago
         $client = new PreferenceClient();
@@ -61,19 +60,22 @@ class PaymentController extends Controller
             "failure" => "{$currentUrlBase}/pedidos?status=failure&external_reference={$idPedido}",
             "pending" => "{$currentUrlBase}/pedidos?status=pending&external_reference={$idPedido}"
         ];
+
+        $empresaigv = Empresa::value('igv');
     
         // Crear los ítems a partir de los detalles del pedido
         $items = [];
         foreach ($detalles as $detalle) {
+            $unitPriceWithIGV = (float)$detalle['precioUnitario'] * (1 + $empresaigv / 100); // Incluye IGV en el precio
             $items[] = [
                 "id" => $detalle['idProducto'],
                 "title" => $detalle['nombreProducto'],
                 "quantity" => (int)$detalle['cantidad'],
-                "unit_price" => (float)$detalle['precioUnitario'],
+                "unit_price" => $unitPriceWithIGV, // Precio con IGV
                 "currency_id" => "PEN" // Ajusta según tu moneda
             ];
         }
-    
+            
         // Configurar la preferencia con los datos necesarios
         $preferenceData = [
             "items" => $items,
