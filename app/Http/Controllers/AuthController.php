@@ -255,9 +255,9 @@ class AuthController extends Controller
                 'nombres.required' => 'El nombre es obligatorio.',
                 'apellidos.required' => 'Los apellidos son obligatorios.',
                 'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
-                'dni.required' => 'El DNI es obligatorio.',
-                'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
-                'dni.unique' => 'El DNI ya está registrado.',
+                // 'dni.required' => 'El DNI es obligatorio.',
+                // 'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
+                // 'dni.unique' => 'El DNI ya está registrado.',
                 'correo.required' => 'El correo es obligatorio.',
                 'correo.email' => 'El correo debe tener un formato válido.',
                 'correo.unique' => 'El correo ya está registrado.',
@@ -279,7 +279,7 @@ class AuthController extends Controller
                     'required',  
                     'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
                 ],
-                'dni' => 'required|string|size:8|unique:usuarios',
+                // 'dni' => 'required|string|size:8|unique:usuarios',
                 'correo' => 'required|string|email|max:255|unique:usuarios',
                 'edad' => 'nullable|integer|between:18,100',
                 'nacimiento' => 'nullable|date|before:today',
@@ -335,7 +335,7 @@ class AuthController extends Controller
                    'rol' => $request->rol,
                    'nombres' => $request->nombres,
                    'apellidos' => $request->apellidos,
-                   'dni' => $request->dni, 
+                   'dni' => null, 
                    'correo' => $request->correo,
                    'edad' => $request->edad ?? null,
                    'nacimiento' => $request->nacimiento ?? null,
@@ -391,7 +391,7 @@ class AuthController extends Controller
                        'rol' => 'cliente',
                        'nombres' => $payload['given_name'],
                        'apellidos' => $payload['family_name'],
-                       'dni' => "", // Establecer un valor por defecto o generar uno
+                       'dni' => null, // Establecer un valor por defecto o generar uno
                        'password' => bcrypt(Str::random(16)), // Genera una contraseña aleatoria
                        'status' => 'loggedOff',
                        'emailVerified' => 1, // Establecer email_verified como 1 para usuarios de Google

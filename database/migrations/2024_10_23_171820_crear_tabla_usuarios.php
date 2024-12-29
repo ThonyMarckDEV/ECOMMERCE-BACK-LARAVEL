@@ -19,14 +19,13 @@ class CrearTablaUsuarios extends Migration
             $table->string('rol', 255);
             $table->string('nombres', 255);
             $table->string('apellidos', 255);
-            $table->string('dni', 255);
+            $table->string('dni', 255)->nullable();
             $table->string('correo', 255);
             $table->integer('edad')->nullable();
             $table->string('nacimiento', 255)->nullable();
             $table->string('sexo', 255)->nullable();
             $table->string('direccion', 255)->nullable();
             $table->string('telefono', 255)->nullable();
-            $table->string('departamento', 255)->nullable();
             $table->string('password', 255);
             $table->string('status', 255);
             $table->string('perfil')->nullable(); // Almacenar la ruta de la imagen

@@ -29,6 +29,7 @@ use App\Mail\CodigoVerificacion;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use GuzzleHttp\Client;
 
 class ClienteController extends Controller
 {
@@ -280,6 +281,32 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'message' => 'Datos actualizados correctamente']);
     }
 
+    public function validateDNI($numero)
+    {
+        // Verificar que el DNI no sea vacío
+        if (empty($numero)) {
+            return response()->json(['success' => false, 'message' => 'El DNI no puede estar vacío'], 400);
+        }
+    
+        // Verificar que el DNI tenga exactamente 8 caracteres
+        if (strlen($numero) !== 8) {
+            return response()->json(['success' => false, 'message' => 'El DNI debe tener exactamente 8 caracteres'], 400);
+        }
+    
+        // Verificar que no todos los caracteres sean iguales (ejemplo: "11111111" o "00000000")
+        if (preg_match('/^(.)\1{7}$/', $numero)) {
+            return response()->json(['success' => false, 'message' => 'El DNI no puede tener todos los caracteres iguales'], 400);
+        }
+    
+        // Verificar si el DNI ya está registrado en la tabla usuarios
+        $dniExistente = Usuario::where('dni', $numero)->exists();
+        if ($dniExistente) {
+            return response()->json(['success' => false, 'message' => 'El DNI ya está registrado en la base de datos'], 400);
+        }
+    
+        // Si pasa todas las validaciones
+        return response()->json(['success' => true, 'message' => 'El DNI es válido'], 200);
+    }
 
     public function listarProductos(Request $request)
     {

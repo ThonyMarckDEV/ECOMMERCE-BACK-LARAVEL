@@ -110,6 +110,7 @@ use App\Http\Controllers\AuthController;
 
     // RUTAS PARA CLIENTE VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
     Route::middleware(['auth.jwt', 'checkRoleMW:cliente'])->group(function () {
+        Route::get('validate-dni/{numero}', [ClienteController::class, 'validateDNI']);
 
         Route::get('perfilCliente', [ClienteController::class, 'perfilCliente']);
         Route::post('uploadProfileImageCliente/{idUsuario}', [ClienteController::class, 'uploadProfileImageCliente']);
