@@ -42,8 +42,8 @@ use App\Http\Controllers\AuthController;
         Route::post('/webhook/mercadopago', [PaymentController::class, 'recibirPago']);
 
         Route::post('actualizar-comprobante', [PaymentController::class, 'actualizarComprobante']);
- 
-        Route::post('test2api', [AdminController::class, 'test2api']);
+
+
 //================================================================================================
     //RUTAS  AUTH PROTEGIDAS
 
@@ -66,8 +66,7 @@ use App\Http\Controllers\AuthController;
     Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () { 
         Route::post('register', [AdminController::class, 'register']);
 
-        Route::post('/categorias', [AdminController::class, 'agregarCategorias']);
-
+    
         Route::put('/actualizarUsuario/{id}', [AdminController::class, 'actualizarUsuario']);
         Route::delete('/eliminarUsuario/{id}', [AdminController::class, 'eliminarUsuario']);
 
@@ -75,9 +74,15 @@ use App\Http\Controllers\AuthController;
         Route::post('/actualizarProducto/{id}', [AdminController::class, 'actualizarProducto']);
         Route::delete('/eliminarProducto/{id}', [AdminController::class, 'eliminarProducto']);
 
-        Route::post('/agregarCategoria', [AdminController::class, 'agregarCategoria']);
+        Route::post('/categorias', [AdminController::class, 'agregarCategorias']);
         Route::put('/actualizarCategoria/{id}', [AdminController::class, 'actualizarCategoria']);
         Route::delete('/eliminarCategoria/{id}', [AdminController::class, 'eliminarCategoria']);
+        Route::get('/obtenerCategorias', [AdminController::class, 'obtenerCategorias']);
+        Route::put('/cambiarEstadoCategoria/{id}', [AdminController::class, 'cambiarEstadoCategoria']);
+
+        Route::get('/obtenerTallas', [AdminController::class, 'obtenerTallas']);
+        Route::post('/agregarTalla', [AdminController::class, 'agregarTalla']);
+        Route::put('/editarTalla/{id}', [AdminController::class, 'editarTalla']);
    
         Route::get('/admin/pedidos', [AdminController::class, 'getAllOrders']);
 

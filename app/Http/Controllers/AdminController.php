@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Talla;
 use App\Models\Usuario;
 use App\Models\Categoria;
 use App\Models\Producto;
@@ -190,13 +191,156 @@ class AdminController extends Controller
     }
 
 
-     // Obtener todas las categorías
-     public function listarCategorias()
+    // Obtener las 8 primeras categorías con estado "activo" para el home principal
+    public function listarCategorias()
+    {
+        // Filtrar las categorías por estado "activo" y obtener las primeras 8
+        $categorias = Categoria::where('estado', 'activo')
+                            ->take(8)
+                            ->get();
+
+        // Devolver las categorías como JSON con un mensaje de éxito
+        return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
+    public function obtenerCategorias(Request $request)
+    {
+        // Obtener los parámetros de paginación
+        $page = $request->input('page', 1); // Página actual, por defecto 1
+        $limit = $request->input('limit', 5); // Límite de elementos por página, por defecto 5
+    
+        // Obtener los parámetros de filtro y búsqueda
+        $idCategoria = $request->input('idCategoria', '');
+        $nombreCategoria = $request->input('nombreCategoria', '');
+        $descripcion = $request->input('descripcion', '');
+        $estado = $request->input('estado', '');
+        $searchTerm = $request->input('searchTerm', '');
+    
+        // Construir la consulta
+        $query = Categoria::query();
+    
+        // Aplicar filtros
+        if ($idCategoria) {
+            $query->where('idCategoria', 'like', "%{$idCategoria}%");
+        }
+        if ($nombreCategoria) {
+            $query->where('nombreCategoria', 'like', "%{$nombreCategoria}%");
+        }
+        if ($descripcion) {
+            $query->where('descripcion', 'like', "%{$descripcion}%");
+        }
+        if ($estado) {
+            $query->where('estado', 'like', "%{$estado}%");
+        }
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('idCategoria', 'like', "%{$searchTerm}%")
+                  ->orWhere('nombreCategoria', 'like', "%{$searchTerm}%")
+                  ->orWhere('descripcion', 'like', "%{$searchTerm}%")
+                  ->orWhere('estado', 'like', "%{$searchTerm}%");
+            });
+        }
+    
+        // Paginar los resultados
+        $categorias = $query->paginate($limit, ['*'], 'page', $page);
+    
+        return response()->json([
+            'data' => $categorias->items(), // Datos de la página actual
+            'total' => $categorias->total(), // Total de registros
+            'page' => $categorias->currentPage(), // Página actual
+            'totalPages' => $categorias->lastPage(), // Total de páginas
+        ]);
+    }
+
+     public function cambiarEstadoCategoria($id, Request $request)
+    {
+        // Validar el estado recibido
+        $request->validate([
+            'estado' => 'required|in:activo,inactivo',
+        ]);
+
+        // Buscar la categoría por ID
+        $categoria = Categoria::findOrFail($id);
+
+        // Actualizar el estado
+        $categoria->estado = $request->estado;
+        $categoria->save();
+
+        // Devolver una respuesta exitosa
+        return response()->json(['message' => 'Estado actualizado correctamente']);
+    }
+
+    public function obtenerTallas(Request $request)
+    {
+        // Obtener los parámetros de paginación
+        $page = $request->query('page', 1); // Página actual, por defecto 1
+        $limit = $request->query('limit', 10); // Límite de elementos por página, por defecto 10
+    
+        // Obtener los parámetros de filtro y búsqueda
+        $idTalla = $request->query('idTalla', '');
+        $nombreTalla = $request->query('nombreTalla', '');
+        $searchTerm = $request->query('searchTerm', '');
+    
+        // Construir la consulta
+        $query = Talla::query();
+    
+        // Aplicar filtros
+        if ($idTalla) {
+            $query->where('idTalla', 'like', "%{$idTalla}%");
+        }
+        if ($nombreTalla) {
+            $query->where('nombreTalla', 'like', "%{$nombreTalla}%");
+        }
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('idTalla', 'like', "%{$searchTerm}%")
+                  ->orWhere('nombreTalla', 'like', "%{$searchTerm}%");
+            });
+        }
+    
+        // Paginar los resultados
+        $tallas = $query->paginate($limit, ['*'], 'page', $page);
+    
+        return response()->json([
+            'data' => $tallas->items(), // Datos de la página actual
+            'total' => $tallas->total(), // Total de registros
+            'page' => $tallas->currentPage(), // Página actual
+            'totalPages' => $tallas->lastPage(), // Total de páginas
+        ]);
+    }
+ 
+     // Agregar una nueva talla
+     public function agregarTalla(Request $request)
      {
-         $categorias = Categoria::take(8)->get(); // Obtener las primeras 8 categorías
-         return response()->json(['success' => true, 'data' => $categorias], 200);
+         $request->validate([
+             'nombreTalla' => 'required|string|unique:tallas',
+         ]);
+ 
+         $talla = Talla::create([
+             'nombreTalla' => $request->nombreTalla,
+         ]);
+ 
+         return response()->json(['message' => 'Talla agregada exitosamente', 'data' => $talla], 201);
      }
-     
+ 
+     // Editar una talla existente
+     public function editarTalla(Request $request, $id)
+     {
+         $request->validate([
+             'nombreTalla' => 'required|string|unique:tallas,nombreTalla,' . $id,
+         ]);
+ 
+         $talla = Talla::find($id);
+         if (!$talla) {
+             return response()->json(['message' => 'Talla no encontrada'], 404);
+         }
+ 
+         $talla->nombreTalla = $request->nombreTalla;
+         $talla->save();
+ 
+         return response()->json(['message' => 'Talla actualizada exitosamente', 'data' => $talla]);
+     }
+
 
     // Listar todos los productos con el nombre de la categoría y URL completa de la imagen
     public function listarProductos()

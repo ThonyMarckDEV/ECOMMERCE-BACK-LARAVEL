@@ -19,7 +19,8 @@ class Categoria extends Model
     protected $fillable = [
         'nombreCategoria',
         'descripcion', // Descripción de la categoría
-        'imagen'
+        'imagen',
+        'estado',
     ];
 
     // Relación de uno a muchos desde Categoria a Producto

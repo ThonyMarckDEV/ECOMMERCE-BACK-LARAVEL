@@ -15,6 +15,7 @@ class CrearTablaCategorias extends Migration
             $table->string('nombreCategoria');
             $table->string('descripcion', 60)->nullable();
             $table->string('imagen')->nullable();
+            $table->string('estado');
         });
     }
 
