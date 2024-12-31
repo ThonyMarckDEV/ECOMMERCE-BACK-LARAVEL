@@ -12,7 +12,7 @@
 
     <!-- Contenedor principal -->
     <div class="flex flex-col items-center justify-center min-h-screen text-center space-y-6">
-        <h1 class="text-5xl font-bold text-white">Bienvenido al Backend de Ecommerce</h1>
+        <h1 class="text-5xl font-bold text-white">Bienvenido al Backend de Ecommerce | ThonyMarckDEV</h1>
         <p class="text-xl text-white">Accede a la documentación de la API para obtener más detalles sobre la integración.</p>
         
         <!-- Iconos de Swagger y Laravel -->

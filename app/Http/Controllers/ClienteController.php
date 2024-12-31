@@ -1206,6 +1206,7 @@ class ClienteController extends Controller
                 'fecha_pedido' => now(), 
                 'tipo_comprobante' =>null, 
                 'ruc' => null,
+                'serie' => null
             ]);
         
             // Insertar la dirección en la tabla de detalle_direccion_pedido

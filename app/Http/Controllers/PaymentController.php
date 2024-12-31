@@ -13,9 +13,15 @@ use App\Models\Usuario;
 use App\Models\Empresa;
 use App\Models\Producto;
 use App\Mail\NotificacionPagoCompletado;
+use App\Models\Comprobante;
+use App\Models\DetalleComprobante;
 use App\Models\Modelo;
 use App\Models\Stock;
 use App\Models\Talla;
+use App\Models\Numeracion;
+use App\Models\PedidoDetalle;
+use App\Models\Serie;
+use App\Models\TipoComprobante;
 use Illuminate\Support\Facades\Mail;
 use FPDF;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +40,87 @@ class PaymentController extends Controller
         MercadoPagoConfig::setAccessToken(env('MERCADOPAGO_ACCESS_TOKEN'));
     }
 
+    // public function createPreference(Request $request)
+    // {
+    //     // Validar los datos recibidos
+    //     $request->validate([
+    //         'idPedido' => 'required|integer',
+    //         'detalles' => 'required|array',
+    //         'total' => 'required|numeric',
+    //         'correo' => 'required|email'
+    //     ]);
+        
+    //     // Obtener los datos del request
+    //     $idPedido = $request->input('idPedido');
+    //     $detalles = $request->input('detalles');
+    //     $total = $request->input('total');
+        
+    //     // Crear una instancia del cliente de preferencias de MercadoPago
+    //     $client = new PreferenceClient();
+    
+    //     $currentUrlBase = 'https://ecommerce-front-react.vercel.app'; // DOMINIO DEL FRONT
+    
+    //     // URLs de retorno
+    //     $backUrls = [
+    //         "success" => "{$currentUrlBase}/pedidos?status=approved&external_reference={$idPedido}&payment_type=online",
+    //         "failure" => "{$currentUrlBase}/pedidos?status=failure&external_reference={$idPedido}",
+    //         "pending" => "{$currentUrlBase}/pedidos?status=pending&external_reference={$idPedido}"
+    //     ];
+
+    //     $empresaigv = Empresa::value('igv');
+    
+    //     // Crear los ítems a partir de los detalles del pedido
+    //     $items = [];
+    //     foreach ($detalles as $detalle) {
+    //         $unitPriceWithIGV = (float)$detalle['precioUnitario'] * (1 + $empresaigv / 100); // Incluye IGV en el precio
+    //         $items[] = [
+    //             "id" => $detalle['idProducto'],
+    //             "title" => $detalle['nombreProducto'],
+    //             "quantity" => (int)$detalle['cantidad'],
+    //             "unit_price" => $unitPriceWithIGV, // Precio con IGV
+    //             "currency_id" => "PEN" // Ajusta según tu moneda
+    //         ];
+    //     }
+            
+    //     // Configurar la preferencia con los datos necesarios
+    //     $preferenceData = [
+    //         "items" => $items,
+    //         "payer" => [
+    //            // "email" => $correo
+    //         ],
+    //         "back_urls" => $backUrls,
+    //         "auto_return" => "approved", // Automáticamente vuelve al front-end cuando el pago es aprobado
+    //         "binary_mode" => true, // Usar modo binario para más seguridad
+    //         "external_reference" => $idPedido
+    //     ];
+    
+    //     try {
+    //         // Crear la preferencia en MercadoPago
+    //         $preference = $client->create($preferenceData);
+    
+    //         // Verificar si se creó la preferencia correctamente
+    //         if (isset($preference->id)) {
+    //             // Responder con el punto de inicio del pago
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'init_point' => $preference->init_point,
+    //                 'preference_id' => $preference->id // Para el modal
+    //             ]);
+    //         } else {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Error al crear la preferencia en MercadoPago'
+    //             ]);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error al crear la preferencia: ' . $e->getMessage()
+    //         ]);
+    //     }
+    // }
+
+    
     public function createPreference(Request $request)
     {
         // Validar los datos recibidos
@@ -51,9 +138,8 @@ class PaymentController extends Controller
         
         // Crear una instancia del cliente de preferencias de MercadoPago
         $client = new PreferenceClient();
-    
         $currentUrlBase = 'https://ecommerce-front-react.vercel.app'; // DOMINIO DEL FRONT
-    
+        
         // URLs de retorno
         $backUrls = [
             "success" => "{$currentUrlBase}/pedidos?status=approved&external_reference={$idPedido}&payment_type=online",
@@ -62,36 +148,123 @@ class PaymentController extends Controller
         ];
 
         $empresaigv = Empresa::value('igv');
-    
+        
         // Crear los ítems a partir de los detalles del pedido
         $items = [];
         foreach ($detalles as $detalle) {
-            $unitPriceWithIGV = (float)$detalle['precioUnitario'] * (1 + $empresaigv / 100); // Incluye IGV en el precio
-            $items[] = [
-                "id" => $detalle['idProducto'],
-                "title" => $detalle['nombreProducto'],
-                "quantity" => (int)$detalle['cantidad'],
-                "unit_price" => $unitPriceWithIGV, // Precio con IGV
-                "currency_id" => "PEN" // Ajusta según tu moneda
-            ];
+            // Obtener los detalles del pedido usando el idDetallePedido
+            $detallePedido = PedidoDetalle::find($detalle['idDetallePedido']); // Suponiendo que 'DetallePedido' es el nombre del modelo
+        
+            if ($detallePedido) {
+                // Obtener idModelo, idTalla, cantidad y precioUnitario desde el detalle
+                $idModelo = $detallePedido->idModelo;
+                $idTalla = $detallePedido->idTalla;
+                $cantidad = $detallePedido->cantidad;
+                $precioUnitario = $detallePedido->precioUnitario;
+        
+                // Obtener el nombre del producto
+                $producto = Producto::find($detallePedido->idProducto);
+                $nombreProducto = $producto ? $producto->nombreProducto : 'Producto no encontrado';
+        
+                // Obtener el nombre del modelo
+                $modelo = Modelo::find($idModelo);
+                $nombreModelo = $modelo ? $modelo->nombreModelo : 'Modelo no encontrado';
+        
+                // Obtener el nombre de la talla
+                $talla = Talla::find($idTalla);
+                $nombreTalla = $talla ? $talla->nombreTalla : 'Talla no encontrada';
+        
+                // Verificar el stock para el modelo y talla
+                $stock = Stock::where('idModelo', $idModelo)
+                            ->where('idTalla', $idTalla)
+                            ->first();
+        
+                if ($stock) {
+                    // Verificar si hay suficiente stock para descontar
+                    if ($stock->cantidad >= $cantidad) {
+                        // Log para confirmar que hay suficiente stock
+                        Log::info('Stock disponible para el producto', [
+                            'idModelo' => $idModelo,
+                            'idTalla' => $idTalla,
+                            'stockDisponible' => $stock->cantidad,
+                            'cantidadSolicitada' => $cantidad
+                        ]);
+        
+                        // Calcular el precio con IGV
+                        $unitPriceWithIGV = (float)$precioUnitario * (1 + $empresaigv / 100); // Incluye IGV en el precio
+                        $items[] = [
+                            "id" => $detallePedido->idProducto,
+                            "title" => $nombreProducto,
+                            "quantity" => (int)$cantidad,
+                            "unit_price" => $unitPriceWithIGV, // Precio con IGV
+                            "currency_id" => "PEN" // Ajusta según tu moneda
+                        ];
+                    } else {
+                        // Log para stock insuficiente
+                        Log::warning('Stock insuficiente para el producto', [
+                            'idProducto' => $detallePedido->idProducto,
+                            'nombreProducto' => $nombreProducto,
+                            'idModelo' => $idModelo,
+                            'nombreModelo' => $nombreModelo,
+                            'idTalla' => $idTalla,
+                            'nombreTalla' => $nombreTalla,
+                            'stockDisponible' => $stock->cantidad,
+                            'cantidadSolicitada' => $cantidad
+                        ]);
+        
+                        // Stock insuficiente para este producto
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Stock insuficiente para el producto: ' . $nombreProducto . ' (Modelo: ' . $nombreModelo . ', Talla: ' . $nombreTalla . ')'
+                        ], 400);
+                    }
+                } else {
+                    // Log para no encontrar stock
+                    Log::error('No se encontró stock para el producto', [
+                        'idProducto' => $detallePedido->idProducto,
+                        'nombreProducto' => $nombreProducto,
+                        'idModelo' => $idModelo,
+                        'nombreModelo' => $nombreModelo,
+                        'idTalla' => $idTalla,
+                        'nombreTalla' => $nombreTalla
+                    ]);
+        
+                    // No se encontró stock para el producto
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se encontró stock para el producto: ' . $nombreProducto . ' (Modelo: ' . $nombreModelo . ', Talla: ' . $nombreTalla . ')'
+                    ], 404);
+                }
+            } else {
+                // Log si no se encuentra el detalle del pedido
+                Log::error('No se encontró detalle del pedido', [
+                    'idDetallePedido' => $detalle['idDetallePedido']
+                ]);
+        
+                // No se encontró el detalle del pedido
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró detalle del pedido con idDetallePedido: ' . $detalle['idDetallePedido']
+                ], 404);
+            }
         }
-            
+
         // Configurar la preferencia con los datos necesarios
         $preferenceData = [
             "items" => $items,
             "payer" => [
-               // "email" => $correo
+                // "email" => $correo
             ],
             "back_urls" => $backUrls,
             "auto_return" => "approved", // Automáticamente vuelve al front-end cuando el pago es aprobado
             "binary_mode" => true, // Usar modo binario para más seguridad
             "external_reference" => $idPedido
         ];
-    
+
         try {
             // Crear la preferencia en MercadoPago
             $preference = $client->create($preferenceData);
-    
+
             // Verificar si se creó la preferencia correctamente
             if (isset($preference->id)) {
                 // Responder con el punto de inicio del pago
@@ -113,7 +286,7 @@ class PaymentController extends Controller
             ]);
         }
     }
-
+    
     public function actualizarComprobante(Request $request)
     {
         try {
@@ -228,7 +401,6 @@ class PaymentController extends Controller
                 // Asignar el ID del pedido
                 $idPedido = $pedido->idPedido;
 
-                //ACA DESCUEBTA EL STOCK VERIRFICAR SI ESTA BIEN
                 foreach ($pedido->detalles as $detalle) {
                     // Obtener el registro de stock según idModelo y idTalla
                     $stock = Stock::where('idModelo', $detalle->idModelo)
@@ -242,6 +414,9 @@ class PaymentController extends Controller
                             $stock->cantidad -= $detalle->cantidad;
                             $stock->save();
                         } else {
+                            // Log de stock insuficiente
+                            Log::warning('Stock insuficiente para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla . '. Stock disponible: ' . $stock->cantidad . ', cantidad solicitada: ' . $detalle->cantidad);
+                            
                             // Manejar el caso de stock insuficiente
                             return response()->json([
                                 'success' => false,
@@ -249,6 +424,9 @@ class PaymentController extends Controller
                             ], 400);
                         }
                     } else {
+                        // Log si no se encuentra stock para el producto
+                        Log::warning('No se encontró stock para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla);
+                        
                         // Manejar el caso en que no se encuentra un registro de stock
                         return response()->json([
                             'success' => false,
@@ -369,126 +547,161 @@ class PaymentController extends Controller
     }
 
 
-    //ESTE ES PARA FACTURA
-    public function FacturacionActivaFactura($idPedido,$ruc)
+    public function FacturacionActivaFactura($idPedido, $ruc)
     {
         try {
-                    Log::info("La facturación está activada, procesando la API Factura para el pedido: {$idPedido}");
+            Log::info("La facturación está activada, procesando la API Factura para el pedido: {$idPedido}");
             
-                    // Obtener el pedido
-                    $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
-                        ->where('idPedido', $idPedido)
-                        ->first();
-            
-                    if (!$pedido) {
-                        return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-                    }
-            
-                    // Obtener los datos del cliente
-                    $cliente = $pedido->usuario; // Relación con el modelo Usuario
-                    if (!$cliente) {
-                        return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-                    }
-            
-                    $empresa = Empresa::first();
-
-                    // Crear estructura de company
-                    $companyData = [
-                        "ruc" => $empresa->ruc,
+            // Obtener el pedido
+            $pedido = Pedido::with('detalles', 'usuario')
+                ->where('idPedido', $idPedido)
+                ->first();
+    
+            if (!$pedido) {
+                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+            }
+    
+            // Obtener los datos del cliente
+            $cliente = $pedido->usuario;
+            if (!$cliente) {
+                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+            }
+    
+            // Obtener los datos de la empresa
+            $empresa = Empresa::first();
+            if (!$empresa) {
+                return response()->json(['success' => false, 'message' => 'Empresa no encontrada'], 404);
+            }
+    
+            // Crear la estructura de los datos de la empresa y cliente
+            $companyData = [
+                "ruc" => $empresa->ruc,
+            ];
+    
+            $clientData = [
+                "tipo_doc" => "6", // 6(RUC) - 1(DNI)
+                "num_doc" => $ruc, // Usando el RUC recibido
+                "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
+                "correo" => $cliente->correo,
+                "direccion" => $pedido->direccion,
+            ];
+    
+            // Inicializamos el arreglo de detalles
+            $details = [];
+            foreach ($pedido->detalles as $detalle) {
+                $producto = Producto::find($detalle->idProducto);
+                $talla = Talla::find($detalle->idTalla);
+                $modelo = Modelo::find($detalle->idModelo);
+    
+                if ($producto && $talla && $modelo) {
+                    $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+                    $details[] = [
+                        "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
+                        "unidad" => "NIU",
+                        "cantidad" => $detalle->cantidad,
+                        "mto_valor_unitario" => $detalle->precioUnitario,
+                        "descripcion" => $descripcion,
+                        "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
+                        "porcentaje_igv" => $empresa->igv,
+                        "igv" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv / 100),
+                        "tip_afe_igv" => "10",
+                        "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv / 100),
+                        "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
+                        "mto_precio_unitario" => $detalle->precioUnitario * (($empresa->igv / 100) + 1),
                     ];
+                }
+            }
+    
+            // Calcular totales
+            $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
+            $totalIGV = array_sum(array_column($details, 'igv'));
+            $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
+            $totalVenta = $totalGravadas + $totalImpuestos;
 
-                    // Crear estructura de cliente
-                    $clientData = [
-                        "tipo_doc" => "6", // 6(RUC) - 1(DNI)
-                        "num_doc" => $ruc, // Usando el RUC recibido
-                        "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
-                        "correo" => $cliente->correo, // Agregando el correo del cliente
-                        "direccion"=>$pedido->direccion,
-                    ];
-            
-                   // Inicializamos el arreglo de detalles
-                    $details = [];
+            // Obtener numeración
+            $tipoComprobanteCodigo = "01"; // Factura
+            $idSerie = 3; //  SERIE FACTURA ECOMMERCE
 
-                    // Obtenemos los detalles de la base de datos (suponiendo que tienes un modelo de Producto y pedido_detalle)
-                    foreach ($pedido->detalles as $detalle) {
-                        // Buscar el producto, talla y modelo correspondiente
-                        $producto = Producto::find($detalle->idProducto);
-                        $talla = Talla::find($detalle->idTalla);
-                        $modelo = Modelo::find($detalle->idModelo);
+            // Consulta con la relación correcta
+            $numeracion = Numeracion::with(['TipoComprobante', 'Serie'])
+                ->where('tipo_comprobante', $tipoComprobanteCodigo)
+                ->where('idSerie', $idSerie)
+                ->first();
 
-                        // Comprobamos que los objetos existan antes de continuar
-                        if ($producto && $talla && $modelo) {
-                            // Construir la descripción concatenada
-                            $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
+            // Verificar si la numeración fue encontrada
+            if (!$numeracion) {
+                Log::error('No se encontró numeración para el tipo de comprobante especificado.');
+            } else {
+                Log::info('Numeración encontrada:', [
+                    'TipoComprobanteCodigo' => $tipoComprobanteCodigo,
+                    'Numeracion' => $numeracion,
+                    'TipoComprobante' => $numeracion->TipoComprobante->abreviatura,
+                    'Serie' => $numeracion->Serie->nro_serie,
+                    'Correlativo' => $numeracion->numero,
+                ]);
+            }
 
-                            // Añadir los detalles de la factura al arreglo
-                            $details[] = [
-                                "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
-                                "unidad" => "NIU",  // Unidad de medida
-                                "cantidad" => $detalle->cantidad,
-                                "mto_valor_unitario" => $detalle->precioUnitario,
-                                "descripcion" => $descripcion,
-                                "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
-                                "porcentaje_igv" =>$empresa->igv,
-                                "igv" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv/100), //0.18
-                                "tip_afe_igv" => "10",  // Código de afectación IGV (gravado estándar)
-                                "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv/100),//0.18
-                                "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
-                                "mto_precio_unitario" => $detalle->precioUnitario *( ($empresa->igv/100)+1),//1.18
-                            ];
-                        }
-                    }
-            
-                    // Calcular totales
-                    $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
-                    $totalIGV = array_sum(array_column($details, 'igv'));
-                    $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
-                    $totalVenta = $totalGravadas + $totalImpuestos;
-            
-                    // Crear la estructura de la factura
-                    $invoiceData = [
-                        "ubl_version" => "2.1",
-                        "tipo_operacion" => "0101",
-                        "tipo_doc" => "01", //01(FACTURA) (03)BOLETA
-                        "serie" => "F001", //VER COMO HACER LO DE LA SERIE
-                        "correlativo" => "1", // Ajustar según tu lógica
-                        "fecha_emision" => now()->toISOString(),
-                        "tipo_moneda" => "PEN",
-                        "mto_oper_gravadas" => $totalGravadas,
-                        "mto_igv" => $totalIGV,
-                        "total_impuestos" => $totalImpuestos,
-                        "valor_venta" => $totalGravadas,
-                        "sub_total" => $totalVenta,
-                        "mto_imp_venta" => $totalVenta,
-                        "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
-                    ];
-            
-                    // Construir el cuerpo final de la solicitud
-                    $data = [
-                        "company"=>$companyData,
-                        "client" => $clientData,
-                        "invoice" => $invoiceData,
-                        "details" => $details,
-                    ];
-            
-                    //PONER EN ENV
-                    // Enviar los datos a la API
-                    $apiResponse = Http::post('http://localhost:8001/api/API_FACTURA_PDF', $data);
+            $numeracion = Numeracion::where('tipo_comprobante', $tipoComprobanteCodigo)
+                ->where('idSerie', $idSerie)
+                ->first();
 
-                    // Log::error("ERROR",$data);
-                    $body = $apiResponse->json();
+            if ($numeracion) {
+                // Incrementar correlativo
+                $numeracion->numero+1;
+                $numeracion->save(); // Guardar la actualización
+                Log::info('Correlativo incrementado:', ['NuevoCorrelativo' => $numeracion->numero]);
 
-                    if ($apiResponse->successful()) {
-                        // Manejar la respuesta exitosa de la API
-                        Log::info("Pago procesado correctamente para el pedido ");
-                    } else {
-                       Log::error("Error ",  $body);
-                    }
-                
-            //Log::info("Estado de pago y pedido actualizados correctamente para el ID {$id}.");
-            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'],200);
+                $abreviaturaTipoComprobante = $numeracion->TipoComprobante->abreviatura;
+                $numeroSerie = $abreviaturaTipoComprobante . str_pad($numeracion->Serie->nro_serie, 3, '0', STR_PAD_LEFT);
+                Log::info('Serie Generada:', ['NumeroSerie' => $numeroSerie]);
+
+                $correlativo = $numeracion->numero;
+                Log::info('Correlativo:', ['Correlativo' => $correlativo]);
+
+  
+            }
+
+            // Crear la estructura de la factura
+            $invoiceData = [
+                "ubl_version" => "2.1",
+                "tipo_operacion" => "0101", // Facturación normal
+                "tipo_doc" => $tipoComprobanteCodigo,
+                "serie" => $numeroSerie,
+                "correlativo" => $correlativo,
+                "fecha_emision" => now()->toISOString(),
+                "tipo_moneda" => "PEN",
+                "mto_oper_gravadas" => $totalGravadas,
+                "mto_igv" => $totalIGV,
+                "total_impuestos" => $totalImpuestos,
+                "valor_venta" => $totalGravadas,
+                "sub_total" => $totalVenta,
+                "mto_imp_venta" => $totalVenta,
+                "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
+            ];
+    
+            // Construir el cuerpo final de la solicitud
+            $data = [
+                "company" => $companyData,
+                "client" => $clientData,
+                "invoice" => $invoiceData,
+                "details" => $details,
+            ];
+    
+            // Enviar los datos a la API
+            $apiResponse = Http::post('http://localhost:8001/api/API_FACTURA_PDF', $data);
+            $body = $apiResponse->json();
+    
+            // Log de respuesta de la API
+            if ($apiResponse->successful()) {
+                Log::info("Factura generada correctamente para el pedido {$idPedido}", ['response' => $body]);
+            } else {
+                Log::error("Error en la API de Factura", ['response' => $body]);
+            }
+    
+            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'], 200);
+    
         } catch (\Exception $e) {
-           // Log::error('Error al procesar el webhook: ' . $e->getMessage());
+            Log::error('Error al procesar el pedido: ' . $e->getMessage());
             return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
     }
@@ -533,6 +746,8 @@ class PaymentController extends Controller
             // Inicializamos el arreglo de detalles
             $details = [];
 
+
+
             // Obtenemos los detalles de la base de datos
             foreach ($pedido->detalles as $detalle) {
                 $producto = Producto::find($detalle->idProducto);
@@ -566,13 +781,56 @@ class PaymentController extends Controller
             $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
             $totalVenta = $totalGravadas + $totalImpuestos;
 
+            // Obtener numeración
+            $tipoComprobanteCodigo = "03"; // Boleta
+            $idSerie = 1; // SERIE BOLETA ECOMMERCE
+
+            // Consulta con la relación correcta
+            $numeracion = Numeracion::with(['TipoComprobante', 'Serie'])
+                ->where('tipo_comprobante', $tipoComprobanteCodigo)
+                ->where('idSerie', $idSerie)
+                ->first();
+
+            // Verificar si la numeración fue encontrada
+            if (!$numeracion) {
+                Log::error('No se encontró numeración para el tipo de comprobante especificado.');
+            } else {
+                Log::info('Numeración encontrada:', [
+                    'TipoComprobanteCodigo' => $tipoComprobanteCodigo,
+                    'Numeracion' => $numeracion,
+                    'TipoComprobante' => $numeracion->TipoComprobante->abreviatura,
+                    'Serie' => $numeracion->Serie->nro_serie,
+                    'Correlativo' => $numeracion->numero,
+                ]);
+            }
+
+            $numeracion = Numeracion::where('tipo_comprobante', $tipoComprobanteCodigo)
+                ->where('idSerie', $idSerie)
+                ->first();
+
+            if ($numeracion) {
+                // Incrementar correlativo
+                $numeracion->numero+1;
+                $numeracion->save(); // Guardar la actualización
+                Log::info('Correlativo incrementado:', ['NuevoCorrelativo' => $numeracion->numero]);
+
+                $abreviaturaTipoComprobante = $numeracion->TipoComprobante->abreviatura;
+                $numeroSerie = $abreviaturaTipoComprobante . str_pad($numeracion->Serie->nro_serie, 3, '0', STR_PAD_LEFT);
+                Log::info('Serie Generada:', ['NumeroSerie' => $numeroSerie]);
+
+                $correlativo = $numeracion->numero;
+                Log::info('Correlativo:', ['Correlativo' => $correlativo]);
+
+    
+            }
+
             // Crear la estructura de la factura
             $invoiceData = [
                 "ubl_version" => "2.1",
                 "tipo_operacion" => "0101",
-                "tipo_doc" => "03", // 01(FACTURA) o 03(BOLETA)
-                "serie" => "B001",
-                "correlativo" => "1",
+                "tipo_doc" => $tipoComprobanteCodigo,// 03(BOLETA)
+                "serie" => $numeroSerie,
+                "correlativo" => $correlativo,
                 "fecha_emision" => now()->toISOString(),
                 "tipo_moneda" => "PEN",
                 "mto_oper_gravadas" => $totalGravadas,

@@ -55,6 +55,7 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', env('LOG_STACK', 'single')),
+           // 'channels' => ['single', 'stderr'], // Agrega 'stderr' para que los logs se muestren en la consola
             'ignore_exceptions' => false,
         ],
 
