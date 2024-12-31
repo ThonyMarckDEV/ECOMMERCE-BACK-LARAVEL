@@ -609,7 +609,7 @@ class PaymentController extends Controller
             $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
             $totalVenta = $totalGravadas + $totalImpuestos;
     
-            // Primero, asegurarnos que existe el tipo de documento
+             // Primero, asegurarnos que existe el tipo de documento
             $tipoDocumento = TipoDocumento::firstOrCreate(
                 ['codigo' => '01'],
                 [
@@ -617,17 +617,22 @@ class PaymentController extends Controller
                     'abreviatura' => 'F'
                 ]
             );
-    
-            // Luego crear o actualizar el correlativo usando el ID del tipo documento
-            $correlativo = Correlativo::firstOrCreate(
-                ['idTipoDocumento' => $tipoDocumento->idTipoDocumento],
-                [
+
+            // Validar si ya existe un correlativo para este tipo de documento
+            $correlativo = Correlativo::where('idTipoDocumento', $tipoDocumento->idTipoDocumento)
+                ->where('codigo', '01')
+                ->first();
+
+            // Si no existe, crear el correlativo con valores iniciales
+            if (!$correlativo) {
+                $correlativo = Correlativo::create([
+                    'idTipoDocumento' => $tipoDocumento->idTipoDocumento,
                     'numero_serie' => '001',
                     'numero_actual' => 1,
-                    'codigo' => '01' // Asegurar que el campo 'codigo' tenga un valor
-                ]
-            );
-    
+                    'codigo' => '01'
+                ]);
+            }
+                
             $numeroSerie = $tipoDocumento->abreviatura . str_pad($correlativo->numero_serie, 3, '0', STR_PAD_LEFT);
             $numeroCorrelativo = $correlativo->numero_actual;
     
@@ -686,10 +691,21 @@ class PaymentController extends Controller
                         'subtotal' => $detalle->cantidad * $detalle->precioUnitario
                     ]);
                 }
-    
+
+                // Buscar el correlativo donde el código sea '01'
+                $correlativo = Correlativo::where('codigo', '01')
+                ->where('idTipoDocumento', $tipoDocumento->idTipoDocumento)
+                ->first();
+
+                // Verificar si el correlativo existe
+                if ($correlativo) {
                 // Incrementar correlativo
                 $correlativo->numero_actual++;
                 $correlativo->save();
+                } else {
+                // Lanzar una excepción o manejar el caso en que no exista el correlativo
+                throw new \Exception("No se encontró un correlativo con código '03'.");
+                }
     
                 // Enviar a la API
                 $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_FACTURA_PDF', $data);
@@ -782,25 +798,29 @@ class PaymentController extends Controller
             $totalVenta = $totalGravadas + $totalImpuestos;
     
 
-              // Primero, asegurarnos que existe el tipo de documento
-              $tipoDocumento = TipoDocumento::firstOrCreate(
+             // Primero, asegurarnos que existe el tipo de documento
+             $tipoDocumento = TipoDocumento::firstOrCreate(
                 ['codigo' => '03'],
                 [
                     'descripcion' => 'Boleta',
                     'abreviatura' => 'B'
                 ]
             );
-    
-    
-            // Luego crear o actualizar el correlativo usando el ID del tipo documento
-            $correlativo = Correlativo::firstOrCreate(
-                ['idTipoDocumento' => $tipoDocumento->idTipoDocumento],
-                [
+
+            // Validar si ya existe un correlativo para este tipo de documento
+            $correlativo = Correlativo::where('idTipoDocumento', $tipoDocumento->idTipoDocumento)
+                ->where('codigo', '03')
+                ->first();
+
+            // Si no existe, crear el correlativo con valores iniciales
+            if (!$correlativo) {
+                $correlativo = Correlativo::create([
+                    'idTipoDocumento' => $tipoDocumento->idTipoDocumento,
                     'numero_serie' => '001',
                     'numero_actual' => 1,
-                    'codigo' => '03' // Asegurar que el campo 'codigo' tenga un valor
-                ]
-            );
+                    'codigo' => '03'
+                ]);
+            }
     
             $numeroSerie = $tipoDocumento->abreviatura . str_pad($correlativo->numero_serie, 3, '0', STR_PAD_LEFT);
             $numeroCorrelativo = $correlativo->numero_actual;
@@ -866,9 +886,20 @@ class PaymentController extends Controller
                     ]);
                 }
     
+                // Buscar el correlativo donde el código sea '03'
+                $correlativo = Correlativo::where('codigo', '03')
+                ->where('idTipoDocumento', $tipoDocumento->idTipoDocumento)
+                ->first();
+
+                // Verificar si el correlativo existe
+                if ($correlativo) {
                 // Incrementar correlativo
                 $correlativo->numero_actual++;
                 $correlativo->save();
+                } else {
+                // Lanzar una excepción o manejar el caso en que no exista el correlativo
+                throw new \Exception("No se encontró un correlativo con código '03'.");
+                }
     
                 // Enviar a la API
                 $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_BOLETA_PDF', $data);
