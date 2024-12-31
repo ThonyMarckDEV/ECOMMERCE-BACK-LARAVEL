@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Response;
 use App\Models\Facturacion;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -322,24 +323,28 @@ class AdminController extends Controller
  
          return response()->json(['message' => 'Talla agregada exitosamente', 'data' => $talla], 201);
      }
- 
-     // Editar una talla existente
-     public function editarTalla(Request $request, $id)
-     {
-         $request->validate([
-             'nombreTalla' => 'required|string|unique:tallas,nombreTalla,' . $id,
-         ]);
- 
-         $talla = Talla::find($id);
-         if (!$talla) {
-             return response()->json(['message' => 'Talla no encontrada'], 404);
-         }
- 
-         $talla->nombreTalla = $request->nombreTalla;
-         $talla->save();
- 
-         return response()->json(['message' => 'Talla actualizada exitosamente', 'data' => $talla]);
-     }
+
+    // Editar una talla existente
+    public function editarTalla(Request $request, $id)
+    {
+        $request->validate([
+            'nombreTalla' => [
+                'required',
+                'string',
+                Rule::unique('tallas')->ignore($id, 'idTalla'), // Especifica la columna correcta
+            ],
+        ]);
+
+        $talla = Talla::find($id);
+        if (!$talla) {
+            return response()->json(['message' => 'Talla no encontrada'], 404);
+        }
+
+        $talla->nombreTalla = $request->nombreTalla;
+        $talla->save();
+
+        return response()->json(['message' => 'Talla actualizada exitosamente', 'data' => $talla]);
+    }
 
 
     // Listar todos los productos con el nombre de la categoría y URL completa de la imagen
