@@ -1,35 +1,25 @@
 <?php
 
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Comprobante extends Model
 {
-    use HasFactory;
-
-    protected $table = 'comprobante';
-
-    public $timestamps = false;
-
+    protected $table = 'comprobantes';
+    protected $primaryKey = 'idComprobante';
+    
     protected $fillable = [
+        'idTipoDocumento',
         'idPedido',
-        'tipo_comprobante',
+        'idUsuario',
         'serie',
         'correlativo',
-        'total',
-        'estado',
         'fecha_emision',
+        'sub_total',
+        'mto_total',
     ];
-
-    public function pedido()
-    {
-        return $this->belongsTo(Pedido::class, 'idPedido');
-    }
-
-    public function detalles()
-    {
-        return $this->hasMany(DetalleComprobante::class, 'idComprobante');
-    }
 }

@@ -14,6 +14,7 @@ use App\Models\Empresa;
 use App\Models\Producto;
 use App\Mail\NotificacionPagoCompletado;
 use App\Models\Comprobante;
+use App\Models\Correlativo;
 use App\Models\DetalleComprobante;
 use App\Models\Modelo;
 use App\Models\Stock;
@@ -22,6 +23,8 @@ use App\Models\Numeracion;
 use App\Models\PedidoDetalle;
 use App\Models\Serie;
 use App\Models\TipoComprobante;
+use App\Models\TipoDocumento;
+use Exception;
 use Illuminate\Support\Facades\Mail;
 use FPDF;
 use Illuminate\Support\Facades\Log;
@@ -547,127 +550,95 @@ class PaymentController extends Controller
     }
 
 
-    public function FacturacionActivaFactura($idPedido, $ruc)
+    public function FacturacionActivaFactura($idPedido)
     {
         try {
-            Log::info("La facturación está activada, procesando la API Factura para el pedido: {$idPedido}");
-            
-            // Obtener el pedido
-            $pedido = Pedido::with('detalles', 'usuario')
+            Log::info("Iniciando facturación de factura para el pedido: {$idPedido}");
+    
+            $pedido = Pedido::with(['detalles', 'usuario'])
                 ->where('idPedido', $idPedido)
-                ->first();
+                ->firstOrFail();
     
-            if (!$pedido) {
-                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-            }
-    
-            // Obtener los datos del cliente
-            $cliente = $pedido->usuario;
-            if (!$cliente) {
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-            }
-    
-            // Obtener los datos de la empresa
-            $empresa = Empresa::first();
-            if (!$empresa) {
-                return response()->json(['success' => false, 'message' => 'Empresa no encontrada'], 404);
-            }
-    
-            // Crear la estructura de los datos de la empresa y cliente
+            $empresa = Empresa::firstOrFail();
+            
+            // Estructura de company
             $companyData = [
                 "ruc" => $empresa->ruc,
             ];
     
+            // Estructura de cliente
             $clientData = [
-                "tipo_doc" => "6", // 6(RUC) - 1(DNI)
-                "num_doc" => $ruc, // Usando el RUC recibido
-                "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
-                "correo" => $cliente->correo,
+                "tipo_doc" => "6", //RUC
+                "num_doc" => $pedido->ruc,
+                "razon_social" => $pedido->usuario->nombres . ' ' . $pedido->usuario->apellidos,
+                "correo" => $pedido->usuario->correo,
                 "direccion" => $pedido->direccion,
             ];
     
-            // Inicializamos el arreglo de detalles
+            // Procesamiento de detalles
             $details = [];
             foreach ($pedido->detalles as $detalle) {
-                $producto = Producto::find($detalle->idProducto);
-                $talla = Talla::find($detalle->idTalla);
-                $modelo = Modelo::find($detalle->idModelo);
+                $producto = Producto::findOrFail($detalle->idProducto);
+                $talla = Talla::findOrFail($detalle->idTalla);
+                $modelo = Modelo::findOrFail($detalle->idModelo);
     
-                if ($producto && $talla && $modelo) {
-                    $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
-                    $details[] = [
-                        "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
-                        "unidad" => "NIU",
-                        "cantidad" => $detalle->cantidad,
-                        "mto_valor_unitario" => $detalle->precioUnitario,
-                        "descripcion" => $descripcion,
-                        "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
-                        "porcentaje_igv" => $empresa->igv,
-                        "igv" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv / 100),
-                        "tip_afe_igv" => "10",
-                        "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv / 100),
-                        "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
-                        "mto_precio_unitario" => $detalle->precioUnitario * (($empresa->igv / 100) + 1),
-                    ];
-                }
+                $precioBase = $detalle->precioUnitario;
+                $cantidad = $detalle->cantidad;
+                $subtotal = $precioBase * $cantidad;
+                $igv = $subtotal * ($empresa->igv/100);
+    
+                $details[] = [
+                    "cod_producto" => $producto->idProducto,
+                    "unidad" => "NIU",
+                    "cantidad" => $cantidad,
+                    "mto_valor_unitario" => $precioBase,
+                    "descripcion" => "{$producto->nombreProducto} Talla: {$talla->nombreTalla} Modelo: {$modelo->nombreModelo}",
+                    "mto_base_igv" => $subtotal,
+                    "porcentaje_igv" => $empresa->igv,
+                    "igv" => $igv,
+                    "tip_afe_igv" => "10",
+                    "total_impuestos" => $igv,
+                    "mto_valor_venta" => $subtotal,
+                    "mto_precio_unitario" => $precioBase * (1 + ($empresa->igv/100)),
+                ];
             }
     
-            // Calcular totales
+            // Cálculo de totales
             $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
             $totalIGV = array_sum(array_column($details, 'igv'));
             $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
             $totalVenta = $totalGravadas + $totalImpuestos;
-
-            // Obtener numeración
-            $tipoComprobanteCodigo = "01"; // Factura
-            $idSerie = 3; //  SERIE FACTURA ECOMMERCE
-
-            // Consulta con la relación correcta
-            $numeracion = Numeracion::with(['TipoComprobante', 'Serie'])
-                ->where('tipo_comprobante', $tipoComprobanteCodigo)
-                ->where('idSerie', $idSerie)
-                ->first();
-
-            // Verificar si la numeración fue encontrada
-            if (!$numeracion) {
-                Log::error('No se encontró numeración para el tipo de comprobante especificado.');
-            } else {
-                Log::info('Numeración encontrada:', [
-                    'TipoComprobanteCodigo' => $tipoComprobanteCodigo,
-                    'Numeracion' => $numeracion,
-                    'TipoComprobante' => $numeracion->TipoComprobante->abreviatura,
-                    'Serie' => $numeracion->Serie->nro_serie,
-                    'Correlativo' => $numeracion->numero,
-                ]);
-            }
-
-            $numeracion = Numeracion::where('tipo_comprobante', $tipoComprobanteCodigo)
-                ->where('idSerie', $idSerie)
-                ->first();
-
-            if ($numeracion) {
-                // Incrementar correlativo
-                $numeracion->numero+1;
-                $numeracion->save(); // Guardar la actualización
-                Log::info('Correlativo incrementado:', ['NuevoCorrelativo' => $numeracion->numero]);
-
-                $abreviaturaTipoComprobante = $numeracion->TipoComprobante->abreviatura;
-                $numeroSerie = $abreviaturaTipoComprobante . str_pad($numeracion->Serie->nro_serie, 3, '0', STR_PAD_LEFT);
-                Log::info('Serie Generada:', ['NumeroSerie' => $numeroSerie]);
-
-                $correlativo = $numeracion->numero;
-                Log::info('Correlativo:', ['Correlativo' => $correlativo]);
-
-  
-            }
-
-            // Crear la estructura de la factura
+    
+            // Primero, asegurarnos que existe el tipo de documento
+            $tipoDocumento = TipoDocumento::firstOrCreate(
+                ['codigo' => '01'],
+                [
+                    'descripcion' => 'Factura',
+                    'abreviatura' => 'F'
+                ]
+            );
+    
+            // Luego crear o actualizar el correlativo usando el ID del tipo documento
+            $correlativo = Correlativo::firstOrCreate(
+                ['idTipoDocumento' => $tipoDocumento->idTipoDocumento],
+                [
+                    'numero_serie' => '001',
+                    'numero_actual' => 1,
+                    'codigo' => '01' // Asegurar que el campo 'codigo' tenga un valor
+                ]
+            );
+    
+            $numeroSerie = $tipoDocumento->abreviatura . str_pad($correlativo->numero_serie, 3, '0', STR_PAD_LEFT);
+            $numeroCorrelativo = $correlativo->numero_actual;
+    
+    
+            // Estructura de la factura
             $invoiceData = [
                 "ubl_version" => "2.1",
-                "tipo_operacion" => "0101", // Facturación normal
-                "tipo_doc" => $tipoComprobanteCodigo,
+                "tipo_operacion" => "0101",
+                "tipo_doc" => "01",
                 "serie" => $numeroSerie,
-                "correlativo" => $correlativo,
+                "correlativo" => $numeroCorrelativo,
                 "fecha_emision" => now()->toISOString(),
                 "tipo_moneda" => "PEN",
                 "mto_oper_gravadas" => $totalGravadas,
@@ -676,10 +647,10 @@ class PaymentController extends Controller
                 "valor_venta" => $totalGravadas,
                 "sub_total" => $totalVenta,
                 "mto_imp_venta" => $totalVenta,
-                "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",
+                "legend" => "SON " . strtoupper($this->numerodosletras($totalVenta)) . " SOLES",          
             ];
     
-            // Construir el cuerpo final de la solicitud
+            // Datos completos para la API
             $data = [
                 "company" => $companyData,
                 "client" => $clientData,
@@ -687,146 +658,161 @@ class PaymentController extends Controller
                 "details" => $details,
             ];
     
-            // Enviar los datos a la API
-            $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_FACTURA_PDF', $data);
-            $body = $apiResponse->json();
+            // Comenzar transacción
+            DB::beginTransaction();
+            try {
+                // Guardar comprobante
+                $comprobante = new Comprobante([
+                    'idTipoDocumento' => $tipoDocumento->idTipoDocumento,
+                    'idPedido' => $pedido->idPedido,
+                    'idUsuario' => $pedido->idUsuario,
+                    'serie' => $numeroSerie,
+                    'correlativo' => $numeroCorrelativo,
+                    'fecha_emision' => now(),
+                    'sub_total' => $totalGravadas,
+                    'mto_total' => $totalVenta
+                ]);
+                $comprobante->save();
     
-            // Log de respuesta de la API
-            if ($apiResponse->successful()) {
-                Log::info("Factura generada correctamente para el pedido {$idPedido}", ['response' => $body]);
-            } else {
-                Log::error("Error en la API de Factura", ['response' => $body]);
+                // Guardar detalles del comprobante
+                foreach ($pedido->detalles as $detalle) {
+                    DetalleComprobante::create([
+                        'idComprobante' => $comprobante->idComprobante,
+                        'idProducto' => $detalle->idProducto,
+                        'idTalla' => $detalle->idTalla,
+                        'idModelo' => $detalle->idModelo,
+                        'cantidad' => $detalle->cantidad,
+                        'precio_unitario' => $detalle->precioUnitario,
+                        'subtotal' => $detalle->cantidad * $detalle->precioUnitario
+                    ]);
+                }
+    
+                // Incrementar correlativo
+                $correlativo->numero_actual++;
+                $correlativo->save();
+    
+                // Enviar a la API
+                $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_FACTURA_PDF', $data);
+    
+                if (!$apiResponse->successful()) {
+                    throw new Exception('Error en la respuesta de la API de facturación');
+                }
+    
+                DB::commit();
+                Log::info("Facturación completada exitosamente para el pedido {$idPedido}");
+                
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Factura generada correctamente'
+                ]);
+    
+            } catch (Exception $e) {
+                DB::rollBack();
+                Log::error("Error en la transacción: " . $e->getMessage());
+                throw $e;
             }
     
-            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'], 200);
-    
-        } catch (\Exception $e) {
-            Log::error('Error al procesar el pedido: ' . $e->getMessage());
-            return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+        } catch (Exception $e) {
+            Log::error("Error al generar la Factura: " . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Error al generar la Factura: ' . $e->getMessage()
+            ], 500);
         }
     }
+   
 
-    //ESTE ES PARA BOLETA
     public function FacturacionActivaBoleta($idPedido)
     {
         try {
-            Log::info("La facturación está activada, procesando la API Boleta para el pedido: {$idPedido}");
-
-            // Obtener el pedido
-            $pedido = Pedido::with('detalles', 'usuario') // Relación con los detalles y usuario
-            ->where('idPedido', $idPedido)
-            ->first();
-
-            if (!$pedido) {
-                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-            }
-
-            // Obtener los datos del cliente
-            $cliente = $pedido->usuario; // Relación con el modelo Usuario
-            if (!$cliente) {
-                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-            }
-
-            $empresa = Empresa::first();
-
-            // Crear estructura de company
+            Log::info("Iniciando facturación de boleta para el pedido: {$idPedido}");
+    
+            $pedido = Pedido::with(['detalles', 'usuario'])
+                ->where('idPedido', $idPedido)
+                ->firstOrFail();
+    
+            $empresa = Empresa::firstOrFail();
+            
+            // Estructura de company
             $companyData = [
                 "ruc" => $empresa->ruc,
             ];
-
-            // Crear estructura de cliente
+    
+            // Estructura de cliente
             $clientData = [
                 "tipo_doc" => "1",
-                "num_doc" => $cliente->dni, // Número de documento
-                "razon_social" => $cliente->nombres . ' ' . $cliente->apellidos,
-                "correo" => $cliente->correo,
-                "direccion"=>$pedido->direccion,
+                "num_doc" => $pedido->usuario->dni,
+                "razon_social" => $pedido->usuario->nombres . ' ' . $pedido->usuario->apellidos,
+                "correo" => $pedido->usuario->correo,
+                "direccion" => $pedido->direccion,
             ];
-
-            // Inicializamos el arreglo de detalles
+    
+            // Procesamiento de detalles
             $details = [];
-
-
-
-            // Obtenemos los detalles de la base de datos
             foreach ($pedido->detalles as $detalle) {
-                $producto = Producto::find($detalle->idProducto);
-                $talla = Talla::find($detalle->idTalla);
-                $modelo = Modelo::find($detalle->idModelo);
-
-                if ($producto && $talla && $modelo) {
-                    $descripcion = $producto->nombreProducto . ' Talla: ' . $talla->nombreTalla . ' Modelo: ' . $modelo->nombreModelo;
-
-               // Añadir los detalles de la factura al arreglo
+                $producto = Producto::findOrFail($detalle->idProducto);
+                $talla = Talla::findOrFail($detalle->idTalla);
+                $modelo = Modelo::findOrFail($detalle->idModelo);
+    
+                $precioBase = $detalle->precioUnitario;
+                $cantidad = $detalle->cantidad;
+                $subtotal = $precioBase * $cantidad;
+                $igv = $subtotal * ($empresa->igv/100);
+    
                 $details[] = [
-                    "cod_producto" => $producto->idProducto ?? 'SIN-CODIGO',
-                    "unidad" => "NIU",  // Unidad de medida
-                    "cantidad" => $detalle->cantidad,
-                    "mto_valor_unitario" => $detalle->precioUnitario,
-                    "descripcion" => $descripcion,
-                    "mto_base_igv" => $detalle->precioUnitario * $detalle->cantidad,
-                    "porcentaje_igv" =>$empresa->igv,
-                    "igv" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv/100), //0.18
-                    "tip_afe_igv" => "10",  // Código de afectación IGV (gravado estándar)
-                    "total_impuestos" => ($detalle->precioUnitario * $detalle->cantidad) * ($empresa->igv/100),//0.18
-                    "mto_valor_venta" => $detalle->precioUnitario * $detalle->cantidad,
-                    "mto_precio_unitario" => $detalle->precioUnitario *( ($empresa->igv/100)+1),//1.18
+                    "cod_producto" => $producto->idProducto,
+                    "unidad" => "NIU",
+                    "cantidad" => $cantidad,
+                    "mto_valor_unitario" => $precioBase,
+                    "descripcion" => "{$producto->nombreProducto} Talla: {$talla->nombreTalla} Modelo: {$modelo->nombreModelo}",
+                    "mto_base_igv" => $subtotal,
+                    "porcentaje_igv" => $empresa->igv,
+                    "igv" => $igv,
+                    "tip_afe_igv" => "10",
+                    "total_impuestos" => $igv,
+                    "mto_valor_venta" => $subtotal,
+                    "mto_precio_unitario" => $precioBase * (1 + ($empresa->igv/100)),
                 ];
-                }
             }
-
-            // Calcular totales
+    
+            // Cálculo de totales
             $totalGravadas = array_sum(array_column($details, 'mto_valor_venta'));
             $totalIGV = array_sum(array_column($details, 'igv'));
             $totalImpuestos = array_sum(array_column($details, 'total_impuestos'));
             $totalVenta = $totalGravadas + $totalImpuestos;
-
-            // Obtener numeración
-            $tipoComprobanteCodigo = "03"; // Boleta
-            $idSerie = 1; // SERIE BOLETA ECOMMERCE
-
-            // Consulta con la relación correcta
-            $numeracion = Numeracion::with(['TipoComprobante', 'Serie'])
-                ->where('tipo_comprobante', $tipoComprobanteCodigo)
-                ->where('idSerie', $idSerie)
-                ->first();
-
-            // Verificar si la numeración fue encontrada
-            if (!$numeracion) {
-                Log::error('No se encontró numeración para el tipo de comprobante especificado.');
-            } else {
-                Log::info('Numeración encontrada:', [
-                    'TipoComprobanteCodigo' => $tipoComprobanteCodigo,
-                    'Numeracion' => $numeracion,
-                    'TipoComprobante' => $numeracion->TipoComprobante->abreviatura,
-                    'Serie' => $numeracion->Serie->nro_serie,
-                    'Correlativo' => $numeracion->numero,
-                ]);
-            }
-
-            if ($numeracion) {
-                // Incrementar correlativo
-                $numeracion->numero+1;
-                $numeracion->save(); // Guardar la actualización
-                Log::info('Correlativo incrementado:', ['NuevoCorrelativo' => $numeracion->numero]);
-
-                $abreviaturaTipoComprobante = $numeracion->TipoComprobante->abreviatura;
-                $numeroSerie = $abreviaturaTipoComprobante . str_pad($numeracion->Serie->nro_serie, 3, '0', STR_PAD_LEFT);
-                Log::info('Serie Generada:', ['NumeroSerie' => $numeroSerie]);
-
-                $correlativo = $numeracion->numero;
-                Log::info('Correlativo:', ['Correlativo' => $correlativo]);
-
     
-            }
 
-            // Crear la estructura de la factura
+              // Primero, asegurarnos que existe el tipo de documento
+              $tipoDocumento = TipoDocumento::firstOrCreate(
+                ['codigo' => '03'],
+                [
+                    'descripcion' => 'Boleta',
+                    'abreviatura' => 'B'
+                ]
+            );
+    
+    
+            // Luego crear o actualizar el correlativo usando el ID del tipo documento
+            $correlativo = Correlativo::firstOrCreate(
+                ['idTipoDocumento' => $tipoDocumento->idTipoDocumento],
+                [
+                    'numero_serie' => '001',
+                    'numero_actual' => 1,
+                    'codigo' => '03' // Asegurar que el campo 'codigo' tenga un valor
+                ]
+            );
+    
+            $numeroSerie = $tipoDocumento->abreviatura . str_pad($correlativo->numero_serie, 3, '0', STR_PAD_LEFT);
+            $numeroCorrelativo = $correlativo->numero_actual;
+    
+    
+            // Estructura de la factura
             $invoiceData = [
                 "ubl_version" => "2.1",
                 "tipo_operacion" => "0101",
-                "tipo_doc" => $tipoComprobanteCodigo,// 03(BOLETA)
+                "tipo_doc" => "03",
                 "serie" => $numeroSerie,
-                "correlativo" => $correlativo,
+                "correlativo" => $numeroCorrelativo,
                 "fecha_emision" => now()->toISOString(),
                 "tipo_moneda" => "PEN",
                 "mto_oper_gravadas" => $totalGravadas,
@@ -842,30 +828,78 @@ class PaymentController extends Controller
                     ]
                 ]
             ];
-
-            // Construir el cuerpo final de la solicitud
+    
+            // Datos completos para la API
             $data = [
                 "company" => $companyData,
                 "client" => $clientData,
                 "invoice" => $invoiceData,
                 "details" => $details,
             ];
-
-            // Enviar los datos a la API
-            $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_BOLETA_PDF', $data);
-
-            if ($apiResponse->successful()) {
-                Log::info("Pago procesado correctamente para el pedido {$idPedido}");
-            } else {
-                Log::error("Error al procesar el pago para el pedido {$idPedido}");
+    
+            // Comenzar transacción
+            DB::beginTransaction();
+            try {
+                // Guardar comprobante
+                $comprobante = new Comprobante([
+                    'idTipoDocumento' => $tipoDocumento->idTipoDocumento,
+                    'idPedido' => $pedido->idPedido,
+                    'idUsuario' => $pedido->idUsuario,
+                    'serie' => $numeroSerie,
+                    'correlativo' => $numeroCorrelativo,
+                    'fecha_emision' => now(),
+                    'sub_total' => $totalGravadas,
+                    'mto_total' => $totalVenta
+                ]);
+                $comprobante->save();
+    
+                // Guardar detalles del comprobante
+                foreach ($pedido->detalles as $detalle) {
+                    DetalleComprobante::create([
+                        'idComprobante' => $comprobante->idComprobante,
+                        'idProducto' => $detalle->idProducto,
+                        'idTalla' => $detalle->idTalla,
+                        'idModelo' => $detalle->idModelo,
+                        'cantidad' => $detalle->cantidad,
+                        'precio_unitario' => $detalle->precioUnitario,
+                        'subtotal' => $detalle->cantidad * $detalle->precioUnitario
+                    ]);
+                }
+    
+                // Incrementar correlativo
+                $correlativo->numero_actual++;
+                $correlativo->save();
+    
+                // Enviar a la API
+                $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_BOLETA_PDF', $data);
+    
+                if (!$apiResponse->successful()) {
+                    throw new Exception('Error en la respuesta de la API de facturación');
+                }
+    
+                DB::commit();
+                Log::info("Facturación completada exitosamente para el pedido {$idPedido}");
+                
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Boleta generada correctamente'
+                ]);
+    
+            } catch (Exception $e) {
+                DB::rollBack();
+                Log::error("Error en la transacción: " . $e->getMessage());
+                throw $e;
             }
-
-            return response()->json(['success' => true, 'message' => 'Estado de pago y pedido actualizados correctamente'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+    
+        } catch (Exception $e) {
+            Log::error("Error al generar boleta: " . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Error al generar la boleta: ' . $e->getMessage()
+            ], 500);
         }
     }
-
+    
 
     public function numerodosletras($number)
     {

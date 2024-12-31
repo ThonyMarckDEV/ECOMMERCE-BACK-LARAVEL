@@ -7,22 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class DetalleComprobante extends Model
 {
-    use HasFactory;
-
-    protected $table = 'detalle_comprobante';
-
-    public $timestamps = false;
-
+    protected $table = 'detalle_comprobantes';
+    protected $primaryKey = 'idDetalleComprobante';
+    
     protected $fillable = [
         'idComprobante',
-        'descripcion',
+        'idProducto',
+        'idTalla',
+        'idModelo',
         'cantidad',
         'precio_unitario',
-        'total',
+        'subtotal'
     ];
 
-    public function comprobante()
-    {
-        return $this->belongsTo(Comprobante::class, 'idComprobante');
-    }
 }
