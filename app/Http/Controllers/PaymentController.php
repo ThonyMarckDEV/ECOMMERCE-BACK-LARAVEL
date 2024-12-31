@@ -688,7 +688,7 @@ class PaymentController extends Controller
             ];
     
             // Enviar los datos a la API
-            $apiResponse = Http::post('http://localhost:8001/api/API_FACTURA_PDF', $data);
+            $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_FACTURA_PDF', $data);
             $body = $apiResponse->json();
     
             // Log de respuesta de la API
@@ -804,10 +804,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            $numeracion = Numeracion::where('tipo_comprobante', $tipoComprobanteCodigo)
-                ->where('idSerie', $idSerie)
-                ->first();
-
             if ($numeracion) {
                 // Incrementar correlativo
                 $numeracion->numero+1;
@@ -856,7 +852,7 @@ class PaymentController extends Controller
             ];
 
             // Enviar los datos a la API
-            $apiResponse = Http::post('http://localhost:8001/api/API_BOLETA_PDF', $data);
+            $apiResponse = Http::post('https://facturacion.thonymarckdev.online/api/API_BOLETA_PDF', $data);
 
             if ($apiResponse->successful()) {
                 Log::info("Pago procesado correctamente para el pedido {$idPedido}");
