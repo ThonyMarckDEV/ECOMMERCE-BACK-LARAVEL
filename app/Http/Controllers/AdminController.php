@@ -383,7 +383,7 @@ class AdminController extends Controller
         $request->validate([
             'nombreCategoria' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:60',
-            'imagen' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Validación de imagen
+            'imagen' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:5000', // Validación de imagen
         ]);
 
         // Obtener el nombre de la categoría
@@ -400,6 +400,7 @@ class AdminController extends Controller
             'nombreCategoria' => $nombreCategoria,
             'descripcion' => $descripcion,
             'imagen' => $rutaImagen, // Guardar la ruta de la imagen
+            'estado' => 'activo'
         ]);
 
         return response()->json([
@@ -415,7 +416,7 @@ class AdminController extends Controller
     {
         // Filtrar las categorías por estado "activo" y obtener las primeras 8
         $categorias = Categoria::where('estado', 'activo')
-                            ->take(8)
+                            ->take(12)
                             ->get();
 
         // Devolver las categorías como JSON con un mensaje de éxito
