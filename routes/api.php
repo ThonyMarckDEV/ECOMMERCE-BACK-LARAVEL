@@ -75,7 +75,7 @@ use App\Http\Controllers\AuthController;
         Route::delete('/eliminarProducto/{id}', [AdminController::class, 'eliminarProducto']);
 
         Route::post('/categorias', [AdminController::class, 'agregarCategorias']);
-        Route::put('/actualizarCategoria/{id}', [AdminController::class, 'actualizarCategoria']);
+        Route::post('/actualizarCategoria/{id}', [AdminController::class, 'actualizarCategoria']);
         Route::delete('/eliminarCategoria/{id}', [AdminController::class, 'eliminarCategoria']);
         Route::get('/obtenerCategorias', [AdminController::class, 'obtenerCategorias']);
         Route::put('/cambiarEstadoCategoria/{id}', [AdminController::class, 'cambiarEstadoCategoria']);

@@ -192,85 +192,6 @@ class AdminController extends Controller
     }
 
 
-    // Obtener las 8 primeras categorías con estado "activo" para el home principal
-    public function listarCategorias()
-    {
-        // Filtrar las categorías por estado "activo" y obtener las primeras 8
-        $categorias = Categoria::where('estado', 'activo')
-                            ->take(8)
-                            ->get();
-
-        // Devolver las categorías como JSON con un mensaje de éxito
-        return response()->json(['success' => true, 'data' => $categorias], 200);
-    }
-
-    public function obtenerCategorias(Request $request)
-    {
-        // Obtener los parámetros de paginación
-        $page = $request->input('page', 1); // Página actual, por defecto 1
-        $limit = $request->input('limit', 5); // Límite de elementos por página, por defecto 5
-    
-        // Obtener los parámetros de filtro y búsqueda
-        $idCategoria = $request->input('idCategoria', '');
-        $nombreCategoria = $request->input('nombreCategoria', '');
-        $descripcion = $request->input('descripcion', '');
-        $estado = $request->input('estado', '');
-        $searchTerm = $request->input('searchTerm', '');
-    
-        // Construir la consulta
-        $query = Categoria::query();
-    
-        // Aplicar filtros
-        if ($idCategoria) {
-            $query->where('idCategoria', 'like', "%{$idCategoria}%");
-        }
-        if ($nombreCategoria) {
-            $query->where('nombreCategoria', 'like', "%{$nombreCategoria}%");
-        }
-        if ($descripcion) {
-            $query->where('descripcion', 'like', "%{$descripcion}%");
-        }
-        if ($estado) {
-            $query->where('estado', 'like', "%{$estado}%");
-        }
-        if ($searchTerm) {
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('idCategoria', 'like', "%{$searchTerm}%")
-                  ->orWhere('nombreCategoria', 'like', "%{$searchTerm}%")
-                  ->orWhere('descripcion', 'like', "%{$searchTerm}%")
-                  ->orWhere('estado', 'like', "%{$searchTerm}%");
-            });
-        }
-    
-        // Paginar los resultados
-        $categorias = $query->paginate($limit, ['*'], 'page', $page);
-    
-        return response()->json([
-            'data' => $categorias->items(), // Datos de la página actual
-            'total' => $categorias->total(), // Total de registros
-            'page' => $categorias->currentPage(), // Página actual
-            'totalPages' => $categorias->lastPage(), // Total de páginas
-        ]);
-    }
-
-     public function cambiarEstadoCategoria($id, Request $request)
-    {
-        // Validar el estado recibido
-        $request->validate([
-            'estado' => 'required|in:activo,inactivo',
-        ]);
-
-        // Buscar la categoría por ID
-        $categoria = Categoria::findOrFail($id);
-
-        // Actualizar el estado
-        $categoria->estado = $request->estado;
-        $categoria->save();
-
-        // Devolver una respuesta exitosa
-        return response()->json(['message' => 'Estado actualizado correctamente']);
-    }
-
     public function obtenerTallas(Request $request)
     {
         // Obtener los parámetros de paginación
@@ -487,53 +408,185 @@ class AdminController extends Controller
         ], 200);
     }
 
+  
+    
+    // Obtener las 8 primeras categorías con estado "activo" para el home principal
+    public function listarCategorias()
+    {
+        // Filtrar las categorías por estado "activo" y obtener las primeras 8
+        $categorias = Categoria::where('estado', 'activo')
+                            ->take(8)
+                            ->get();
 
-      // Método para actualizar una categoría
-      public function actualizarCategoria(Request $request, $id)
-      {
-          $request->validate([
-              'nombreCategoria' => 'required|string|max:255',
-              'descripcion' => 'nullable|string|max:500',
-          ]);
-  
-          $categoria = Categoria::find($id);
-          if (!$categoria) {
-              return response()->json([
-                  'success' => false,
-                  'message' => 'Categoría no encontrada'
-              ], 404);
-          }
-  
-          $categoria->update([
-              'nombreCategoria' => $request->nombreCategoria,
-              'descripcion' => $request->descripcion,
-          ]);
-  
-          return response()->json([
-              'success' => true,
-              'message' => 'Categoría actualizada exitosamente',
-              'data' => $categoria
-          ]);
-      }
-  
-      // Método para eliminar una categoría
-      public function eliminarCategoria($id)
-      {
-          $categoria = Categoria::find($id);
-          if (!$categoria) {
-              return response()->json([
-                  'success' => false,
-                  'message' => 'Categoría no encontrada'
-              ], 404);
-          }
-  
-          $categoria->delete();
-  
-          return response()->json([
-              'success' => true,
-              'message' => 'Categoría eliminada exitosamente'
-          ]);
-      }
+        // Devolver las categorías como JSON con un mensaje de éxito
+        return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
+    public function obtenerCategorias(Request $request)
+    {
+        // Obtener los parámetros de paginación
+        $page = $request->input('page', 1); // Página actual, por defecto 1
+        $limit = $request->input('limit', 5); // Límite de elementos por página, por defecto 5
+    
+        // Obtener los parámetros de filtro y búsqueda
+        $idCategoria = $request->input('idCategoria', '');
+        $nombreCategoria = $request->input('nombreCategoria', '');
+        $descripcion = $request->input('descripcion', '');
+        $estado = $request->input('estado', '');
+        $searchTerm = $request->input('searchTerm', '');
+    
+        // Construir la consulta
+        $query = Categoria::query();
+    
+        // Aplicar filtros
+        if ($idCategoria) {
+            $query->where('idCategoria', 'like', "%{$idCategoria}%");
+        }
+        if ($nombreCategoria) {
+            $query->where('nombreCategoria', 'like', "%{$nombreCategoria}%");
+        }
+        if ($descripcion) {
+            $query->where('descripcion', 'like', "%{$descripcion}%");
+        }
+        if ($estado) {
+            $query->where('estado', 'like', "%{$estado}%");
+        }
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('idCategoria', 'like', "%{$searchTerm}%")
+                  ->orWhere('nombreCategoria', 'like', "%{$searchTerm}%")
+                  ->orWhere('descripcion', 'like', "%{$searchTerm}%")
+                  ->orWhere('estado', 'like', "%{$searchTerm}%");
+            });
+        }
+    
+        // Paginar los resultados
+        $categorias = $query->paginate($limit, ['*'], 'page', $page);
+    
+        return response()->json([
+            'data' => $categorias->items(), // Datos de la página actual
+            'total' => $categorias->total(), // Total de registros
+            'page' => $categorias->currentPage(), // Página actual
+            'totalPages' => $categorias->lastPage(), // Total de páginas
+        ]);
+    }
+
+     public function cambiarEstadoCategoria($id, Request $request)
+    {
+        // Validar el estado recibido
+        $request->validate([
+            'estado' => 'required|in:activo,inactivo',
+        ]);
+
+        // Buscar la categoría por ID
+        $categoria = Categoria::findOrFail($id);
+
+        // Actualizar el estado
+        $categoria->estado = $request->estado;
+        $categoria->save();
+
+        // Devolver una respuesta exitosa
+        return response()->json(['message' => 'Estado actualizado correctamente']);
+    }
+    public function actualizarCategoria(Request $request, $id)
+    {
+        Log::info('Iniciando actualización de categoría', [
+            'id' => $id,
+            'request_all' => $request->all(),
+            'files' => $request->hasFile('imagen') ? 'Tiene imagen' : 'No tiene imagen'
+        ]);
+    
+        try {
+            $categoria = Categoria::where('idCategoria', $id)->first();
+            
+            if (!$categoria) {
+                Log::error('Categoría no encontrada', ['id' => $id]);
+                return response()->json(['error' => 'Categoría no encontrada'], 404);
+            }
+    
+            Log::info('Categoría encontrada', ['categoria' => $categoria]);
+    
+            $nombreCategoriaAntiguo = $categoria->nombreCategoria;
+    
+            if ($request->has('nombreCategoria')) {
+                $nombreCategoria = trim($request->nombreCategoria);
+                $nombreCategoria = preg_replace('/\s+/', ' ', $nombreCategoria);
+                $nombreCategoria = preg_replace('/([a-zA-Z])\1{2,}/', '$1$1', $nombreCategoria);
+                $nombreCategoria = preg_replace('/s{2,}$/', 's', $nombreCategoria);
+    
+                $categoria->nombreCategoria = $nombreCategoria;
+                Log::info('Actualizando nombre', ['nuevo_nombre' => $nombreCategoria]);
+            }
+    
+            if ($request->has('descripcion')) {
+                $categoria->descripcion = $request->descripcion;
+                Log::info('Actualizando descripción', ['nueva_descripcion' => $request->descripcion]);
+            }
+    
+            if ($request->hasFile('imagen')) {
+                Log::info('Procesando nueva imagen');
+                
+                $oldFolder = str_replace(' ', '_', $nombreCategoriaAntiguo);
+                $newFolder = str_replace(' ', '_', $categoria->nombreCategoria);
+                
+                $oldBasePath = "imagenes/categorias/{$oldFolder}";
+                $newBasePath = "imagenes/categorias/{$newFolder}";
+    
+                // Eliminar cualquier imagen existente antes de guardar la nueva
+                if ($categoria->imagen && Storage::disk('public')->exists($categoria->imagen)) {
+                    Storage::disk('public')->delete($categoria->imagen);
+                    Log::info('Imagen anterior eliminada', ['path' => $categoria->imagen]);
+                }
+    
+                if ($nombreCategoriaAntiguo !== $categoria->nombreCategoria) {
+                    if (Storage::disk('public')->exists($oldBasePath)) {
+                        $files = Storage::disk('public')->files($oldBasePath);
+                        foreach ($files as $file) {
+                            Storage::disk('public')->delete($file);
+                            Log::info('Archivo eliminado de carpeta antigua', ['file' => $file]);
+                        }
+                        Storage::disk('public')->deleteDirectory($oldBasePath);
+                        Log::info('Carpeta antigua eliminada', ['path' => $oldBasePath]);
+                    }
+                    
+                    if (!Storage::disk('public')->exists($newBasePath)) {
+                        Storage::disk('public')->makeDirectory($newBasePath);
+                        Log::info('Nueva carpeta creada', ['path' => $newBasePath]);
+                    }
+                }
+    
+                $imagePath = $request->file('imagen')->store("imagenes/categorias/{$newFolder}", 'public');
+                $categoria->imagen = $imagePath;
+                
+                Log::info('Nueva imagen guardada', ['path' => $categoria->imagen]);
+            }
+            
+            $categoria->save();
+    
+            Log::info('Categoría actualizada exitosamente', [
+                'id' => $categoria->idCategoria,
+                'nombreCategoria' => $categoria->nombreCategoria,
+                'descripcion' => $categoria->descripcion,
+                'imagen' => $categoria->imagen
+            ]);
+    
+            return response()->json([
+                'message' => 'Categoría actualizada exitosamente',
+                'data' => $categoria
+            ]);
+    
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar categoría', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+    
+            return response()->json([
+                'error' => 'Error al actualizar la categoría: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
 
       public function getAllOrders()
