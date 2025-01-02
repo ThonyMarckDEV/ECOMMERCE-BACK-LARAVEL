@@ -346,9 +346,8 @@ class AuthController extends Controller
                    'verification_token' => Str::random(60), // Genera un token único
                ]);
               // http://localhost:3000
-              //https://ecommerce-front-react.vercel.app
                 // URL para verificar el correo
-                $verificationUrl = "https://ecommerce-front-react.vercel.app/verificar-correo-token?token_veririficador={$user->verification_token}";
+                $verificationUrl = "https://ecommerce-thonymarckdev.vercel.app/verificar-correo-token?token_veririficador={$user->verification_token}";
 
                 // Enviar el correo
                 Mail::to($user->correo)->send(new VerificarCorreo($user, $verificationUrl));
