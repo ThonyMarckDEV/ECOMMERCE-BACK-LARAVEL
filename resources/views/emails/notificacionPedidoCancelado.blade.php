@@ -161,22 +161,6 @@
 <body>
 
     <div class="container">
-        <h1>Cuenta Verificada</h1>
-        <p>¡Hola, {{ $usuario->nombres }}!</p>
-        <p>Tu correo ha sido verificado exitosamente. Ahora puedes acceder a todas las funcionalidades de tu cuenta.</p>
-
-        <p>Gracias por registrarte en nuestro sitio.</p>
-
-        <p class="footer">Saludos,<br>El equipo de ECOMMERCE</p>
-    </div>
-
-</body>
-</html>
-
-</head>
-<body>
-
-    <div class="container">
         <h3>¡Su pedido ha sido cancelado!</h3>
         <p>Estimado <span class="highlight">{{ $nombreCompleto }}</span>,</p>
         <p>Le informamos que el pedido con ID <strong class="highlight">{{ $idPedido }}</strong> ha sido cancelado satisfactoriamente.</p>

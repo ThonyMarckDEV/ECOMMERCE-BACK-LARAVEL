@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Producto extends Model
 {
@@ -59,5 +60,11 @@ class Producto extends Model
             'idModelo'    // Clave primaria de Modelo
         );
     }
+
+     // Relación muchos a muchos con Oferta a través de la tabla intermedia ProductosOfertas
+     public function ofertas(): BelongsToMany
+     {
+         return $this->belongsToMany(Oferta::class, 'productosofertas', 'idProducto', 'idOferta');
+     }
 
 }
