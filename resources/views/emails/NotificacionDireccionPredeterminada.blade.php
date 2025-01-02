@@ -6,7 +6,7 @@
     <title>Dirección Predeterminada Seleccionada</title>
     <!DOCTYPE html>
 <html lang="es">
-<head>
+<h>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cuenta Verificada</title>
@@ -157,22 +157,6 @@
             }
         }
     </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>Cuenta Verificada</h1>
-        <p>¡Hola, {{ $usuario->nombres }}!</p>
-        <p>Tu correo ha sido verificado exitosamente. Ahora puedes acceder a todas las funcionalidades de tu cuenta.</p>
-
-        <p>Gracias por registrarte en nuestro sitio.</p>
-
-        <p class="footer">Saludos,<br>El equipo de ECOMMERCE</p>
-    </div>
-
-</body>
-</html>
-
 </head>
 <body>
     <h1>Dirección Predeterminada Seleccionada</h1>
