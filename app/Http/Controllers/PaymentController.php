@@ -143,7 +143,7 @@ class PaymentController extends Controller
         
         // Crear una instancia del cliente de preferencias de MercadoPago
         $client = new PreferenceClient();
-        $currentUrlBase = 'https://ecommerce-front-react.vercel.app'; // DOMINIO DEL FRONT
+        $currentUrlBase = 'https://ecommerce-thonymarckdev.vercel.app'; // DOMINIO DEL FRONT
         
         // URLs de retorno
         $backUrls = [
@@ -510,19 +510,45 @@ class PaymentController extends Controller
                 
                     // Determinar el tipo de comprobante
                     if ($pedido->tipo_comprobante === 'boleta') {
-                        // Enviar notificación de pago completado para boleta
+                        $pdfDirectory = "storage/comprobantesEcommerce/Boletas/";
+                        $pdfFileName = "boleta_" . date('Ymd') . "_" . $idPedido . ".pdf";
+                        $pdfPath = $pdfDirectory . $pdfFileName;
+                
+                        if (!file_exists($pdfDirectory)) {
+                            mkdir($pdfDirectory, 0755, true);
+                        }
+                
+                        $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
+                
+                        // Enviar notificación con archivo adjunto
                         Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoBoleta(
                             $nombreCompleto,
                             $detallesPedido,
                             $total
-                        ));
+                        )->attach($pdfPath, [
+                            'as' => $pdfFileName,
+                            'mime' => 'application/pdf',
+                        ]));
                     } elseif ($pedido->tipo_comprobante === 'factura') {
-                        // Enviar notificación de pago completado para factura
+                        $pdfDirectory = "storage/comprobantesEcommerce/Facturas/";
+                        $pdfFileName = "factura_" . date('Ymd') . "_" . $idPedido . ".pdf";
+                        $pdfPath = $pdfDirectory . $pdfFileName;
+                
+                        if (!file_exists($pdfDirectory)) {
+                            mkdir($pdfDirectory, 0755, true);
+                        }
+                
+                        $this->generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $pedido->ruc);
+                
+                        // Enviar notificación con archivo adjunto
                         Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoFactura(
                             $nombreCompleto,
                             $detallesPedido,
                             $total
-                        ));
+                        )->attach($pdfPath, [
+                            'as' => $pdfFileName,
+                            'mime' => 'application/pdf',
+                        ]));
                     } else {
                         return response()->json([
                             'success' => false,
@@ -548,28 +574,60 @@ class PaymentController extends Controller
         $pdf = new FPDF();
         $pdf->AddPage();
         $pdf->SetFont('Arial', 'B', 16);
-    
+
         // Título
         $pdf->Cell(0, 10, "Boleta de Pago", 0, 1, 'C');
         $pdf->Ln(10);
-    
+
         // Información del cliente
         $pdf->SetFont('Arial', '', 12);
         $pdf->Cell(0, 10, "Cliente: {$nombreCompleto}", 0, 1);
         $pdf->Ln(5);
-    
+
         // Detalles del pedido
         $pdf->Cell(0, 10, "Detalles del Pedido:", 0, 1);
         $pdf->SetFont('Arial', '', 10);
         foreach ($detallesPedido as $detalle) {
             $pdf->Cell(0, 10, "Producto: {$detalle['producto']}, Cantidad: {$detalle['cantidad']}, Subtotal: S/{$detalle['subtotal']}", 0, 1);
         }
-    
+
         // Total
         $pdf->Ln(5);
         $pdf->SetFont('Arial', 'B', 12);
         $pdf->Cell(0, 10, "Total: S/{$total}", 0, 1);
-    
+
+        // Guardar el PDF en la ruta especificada
+        $pdf->Output('F', $pdfPath);
+    }
+
+    private function generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $ruc)
+    {
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 16);
+
+        // Título
+        $pdf->Cell(0, 10, "Factura de Pago", 0, 1, 'C');
+        $pdf->Ln(10);
+
+        // Información del cliente
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->Cell(0, 10, "Cliente: {$nombreCompleto}", 0, 1);
+        $pdf->Cell(0, 10, "RUC: {$ruc}", 0, 1);
+        $pdf->Ln(5);
+
+        // Detalles del pedido
+        $pdf->Cell(0, 10, "Detalles del Pedido:", 0, 1);
+        $pdf->SetFont('Arial', '', 10);
+        foreach ($detallesPedido as $detalle) {
+            $pdf->Cell(0, 10, "Producto: {$detalle['producto']}, Cantidad: {$detalle['cantidad']}, Subtotal: S/{$detalle['subtotal']}", 0, 1);
+        }
+
+        // Total
+        $pdf->Ln(5);
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->Cell(0, 10, "Total: S/{$total}", 0, 1);
+
         // Guardar el PDF en la ruta especificada
         $pdf->Output('F', $pdfPath);
     }
