@@ -25,172 +25,206 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
-class AdminController extends Controller
+class SuperAdminController extends Controller
 {
-    // // FUNCION PARA REGISTRAR UN USUARIO
-    // public function register(Request $request)
-    // {
-    //     $messages = [
-    //         'username.required' => 'El nombre de usuario es obligatorio.',
-    //         'username.unique' => 'El nombre de usuario ya está en uso.',
-    //         'rol.required' => 'El rol es obligatorio.',
-    //         'nombres.required' => 'El nombre es obligatorio.',
-    //         'apellidos.required' => 'Los apellidos son obligatorios.',
-    //         'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
-    //         'dni.required' => 'El DNI es obligatorio.',
-    //         'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
-    //         'dni.unique' => 'El DNI ya está registrado.',
-    //         'correo.required' => 'El correo es obligatorio.',
-    //         'correo.email' => 'El correo debe tener un formato válido.',
-    //         'correo.unique' => 'El correo ya está registrado.',
-    //         'edad.integer' => 'La edad debe ser un número entero.',
-    //         'edad.between' => 'La edad debe ser mayor a 18.',
-    //         'nacimiento.date' => 'La fecha de nacimiento debe ser una fecha válida.',
-    //         'nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
-    //         'telefono.size' => 'El numero e telefono debe de ser de 9 digitos.',
-    //         'password.required' => 'La contraseña es obligatoria.',
-    //         'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-    //         'password.regex' => 'La contraseña debe incluir al menos una mayúscula y un símbolo.',
-    //         'password.confirmed' => 'Las contraseñas no coinciden.',
-    //     ];
-
-    //     $validator = Validator::make($request->all(), [
-    //         'username' => 'required|string|max:255|unique:usuarios',
-    //         'rol' => 'required|string|max:255',
-    //         'nombres' => 'required|string|max:255',
-    //         'apellidos' => [
-    //             'required',
-    //             'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
-    //         ],
-    //         'dni' => 'required|string|size:8|unique:usuarios',
-    //         'correo' => 'required|string|email|max:255|unique:usuarios',
-    //         'edad' => 'nullable|integer|between:18,100',
-    //         'nacimiento' => 'nullable|date|before:today',
-    //         'telefono' => 'nullable|string|size:9|regex:/^\d{9}$/',
-    //         'departamento' => 'nullable|string|max:255',
-    //         'password' => [
-    //             'required',
-    //             'string',
-    //             'min:8',
-    //             'max:255',
-    //             'regex:/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/',
-    //         ]
-    //     ], $messages);
-
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'errors' => $validator->errors(),
-    //         ], 400);
-    //     }
-
-    //     try {
-    //         // Registrar el usuario
-    //         $user = Usuario::create([
-    //             'username' => $request->username,
-    //             'rol' => $request->rol,
-    //             'nombres' => $request->nombres,
-    //             'apellidos' => $request->apellidos,
-    //             'dni' => $request->dni,
-    //             'correo' => $request->correo,
-    //             'edad' => $request->edad ?? null,
-    //             'nacimiento' => $request->nacimiento ?? null,
-    //             'telefono' => $request->telefono ?? null,
-    //             'departamento' => $request->departamento ?? null,
-    //             'password' => bcrypt($request->password),
-    //             'status' => 'loggedOff',
-    //         ]);
-
-    //         // Crear el carrito asociado al usuario recién registrado
-    //         $carrito = new Carrito();
-    //         $carrito->idUsuario = $user->idUsuario; // Asignar el id del usuario al carrito
-    //         $carrito->save(); // Guardar el carrito
-
-    //         // Devolver la respuesta con éxito
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Usuario registrado y carrito creado exitosamente',
-    //         ], 201);
-
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error al registrar el usuario y crear el carrito',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
-    
-    // // Listar usuarios
-    // // public function listarUsuarios()
-    // // {
-    // //     $usuarios = Usuario::select('idUsuario', 'username', 'rol', 'correo')
-    // //                 ->where('rol', '!=', 'admin') // Excluir usuarios con rol "admin"
-    // //                 ->get();
-    // //     return response()->json(['success' => true, 'data' => $usuarios]);
-    // // }
-
-    public function listarUsuarios(Request $request)
+    // FUNCION PARA REGISTRAR UN ADMIN
+    public function agregarUsuario(Request $request)
     {
-        // Decodificar el token JWT para obtener el usuario autenticado
-        $usuarioAutenticado = auth()->user();
+        // Validar los datos de entrada
+        $validator = Validator::make($request->all(), [
+            'nombres' => 'required|string|max:255',
+            'apellidos' => 'required|string|max:255',
+            'correo' => 'required|email|unique:usuarios,correo',
+            'password' => 'required|string|min:6',
+        ]);
     
-        // Verificar si el usuario autenticado existe
-        if (!$usuarioAutenticado) {
-            return response()->json(['success' => false, 'message' => 'Usuario no autenticado.'], 401);
+        // Si la validación falla, retornar errores
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $validator->errors(),
+            ], 422);
         }
     
-        // Obtener el username y el rol del usuario autenticado
-        $username = $usuarioAutenticado->username;
-        $rolAutenticado = $usuarioAutenticado->rol;
+        // Obtener nombres y apellidos
+        $nombres = $request->nombres;
+        $apellidos = $request->apellidos;
     
-        // Verificar el rol y filtrar usuarios
-        if ($rolAutenticado === 'admin') {
-            if ($username === 'admin') {
-                // Si el username es 'admin', listar usuarios con rol 'admin' y 'cliente' pero omitiendo el 'admin' en la lista
-                $usuarios = Usuario::select('idUsuario', 'username', 'rol', 'correo')
-                            ->whereIn('rol', ['admin', 'cliente'])
-                            ->where('username', '!=', 'admin') // Excluir el usuario con username 'admin'
-                            ->get();
-            } else {
-                // Si el username no es 'admin', listar solo usuarios con rol 'cliente', omitiendo 'admin'
-                $usuarios = Usuario::select('idUsuario', 'username', 'rol', 'correo')
-                            ->where('rol', 'cliente')
-                            ->where('username', '!=', 'admin') // Excluir el usuario con username 'admin'
-                            ->get();
-            }
-        } else {
-            // No tiene permiso para listar usuarios
-            return response()->json(['success' => false, 'message' => 'No tiene permiso para realizar esta acción.'], 403);
-        }
+        // Separar apellidos en paterno y materno
+        $apellidosArray = explode(' ', $apellidos); // Divide los apellidos por espacios
+        $apellidoPaterno = $apellidosArray[0]; // Primer apellido
+        $apellidoMaterno = count($apellidosArray) > 1 ? $apellidosArray[1] : ''; // Segundo apellido (si existe)
     
-        // Retornar la lista de usuarios
-        return response()->json(['success' => true, 'data' => $usuarios]);
+        // Generar el username
+        $username = 
+            strtolower(substr($nombres, 0, 2)) . // Dos primeras letras del nombre
+            strtolower($apellidoPaterno) .       // Todo el apellido paterno
+            strtolower(substr($apellidoMaterno, 0, 1)); // Primera letra del apellido materno
+    
+        // Crear el usuario con valores predeterminados
+        $user = Usuario::create([
+            'rol' => 'admin', // Valor predeterminado
+            'nombres' => $nombres,
+            'apellidos' => $apellidos,
+            'correo' => $request->correo,
+            'password' => bcrypt($request->password), // Encriptar la contraseña
+            'fecha_creado' => now(), // Fecha actual
+            'status' => 'loggedOff', // Valor predeterminado
+            'username' => $username, // Username generado
+            'emailVerified'=>1 // Email verificado
+        ]);
+    
+        // Retornar una respuesta exitosa
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario agregado exitosamente',
+            'user' => $user,
+        ], 201);
     }
+    
 
-    // Eliminar usuario
-    public function eliminarUsuario($id)
-    {
-        $usuario = Usuario::find($id);
-        if ($usuario) {
-            $usuario->delete();
-            return response()->json(['success' => true, 'message' => 'Usuario eliminado correctamente']);
-        }
-        return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-    }
+     // Editar usuario
+     public function editarUsuario(Request $request, $id)
+     {
+         // Validar los datos de entrada
+         $validator = Validator::make($request->all(), [
+             'nombres' => 'sometimes|string|max:255',
+             'apellidos' => 'sometimes|string|max:255',
+             'correo' => 'sometimes|email|unique:usuarios,correo,' . $id,
+             'password' => 'sometimes|string|min:6',
+             'rol' => 'sometimes|string|max:255',
+         ]);
+ 
+         // Si la validación falla, retornar errores
+         if ($validator->fails()) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Error de validación',
+                 'errors' => $validator->errors(),
+             ], 422);
+         }
+ 
+         // Buscar el usuario por ID
+         $user = Usuario::find($id);
+         if (!$user) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Usuario no encontrado',
+             ], 404);
+         }
+ 
+         // Actualizar los campos proporcionados
+         if ($request->has('nombres')) {
+             $user->nombres = $request->nombres;
+         }
+         if ($request->has('apellidos')) {
+             $user->apellidos = $request->apellidos;
+         }
+         if ($request->has('correo')) {
+             $user->correo = $request->correo;
+         }
+         if ($request->has('password')) {
+             $user->password = bcrypt($request->password);
+         }
+         if ($request->has('rol')) {
+             $user->rol = $request->rol;
+         }
+ 
+         $user->save();
+ 
+         // Retornar una respuesta exitosa
+         return response()->json([
+             'success' => true,
+             'message' => 'Usuario actualizado exitosamente',
+             'user' => $user,
+         ]);
+     }
 
-    // Actualizar usuario
-    public function actualizarUsuario(Request $request, $id)
-    {
-        $usuario = Usuario::find($id);
-        if ($usuario) {
-            $usuario->update($request->only('username', 'rol', 'correo'));
-            return response()->json(['success' => true, 'message' => 'Usuario actualizado correctamente']);
-        }
-        return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-    }
-
+     public function listarUsuarios(Request $request)
+     {
+         try {
+             // Obtener los parámetros de la solicitud
+             $perPage = $request->input('per_page', 10); // Número de elementos por página (por defecto 10)
+             $page = $request->input('page', 1); // Página actual (por defecto 1)
+             $search = $request->input('search', ''); // Término de búsqueda general
+             $filters = $request->only(['nombres', 'apellidos', 'correo', 'rol', 'estado']); // Filtros específicos
+     
+             // Construir la consulta
+             $query = Usuario::where('rol', 'admin');
+     
+             // Aplicar filtros dinámicos
+             foreach ($filters as $field => $value) {
+                 if ($value) {
+                     $query->where($field, 'like', "%{$value}%");
+                 }
+             }
+     
+             // Aplicar búsqueda general
+             if ($search) {
+                 $query->where(function ($q) use ($search) {
+                     $q->where('nombres', 'like', "%{$search}%")
+                       ->orWhere('apellidos', 'like', "%{$search}%")
+                       ->orWhere('correo', 'like', "%{$search}%")
+                       ->orWhere('rol', 'like', "%{$search}%")
+                       ->orWhere('estado', 'like', "%{$search}%");
+                 });
+             }
+     
+             // Paginar los resultados
+             $usuarios = $query->select('idUsuario', 'nombres', 'apellidos', 'correo', 'rol', 'estado')
+                               ->paginate($perPage, ['*'], 'page', $page);
+     
+             return response()->json([
+                 'success' => true,
+                 'usuarios' => $usuarios->items(), // Lista de usuarios
+                 'pagination' => [
+                     'total' => $usuarios->total(), // Total de usuarios
+                     'per_page' => $usuarios->perPage(), // Elementos por página
+                     'current_page' => $usuarios->currentPage(), // Página actual
+                     'last_page' => $usuarios->lastPage(), // Última página
+                     'from' => $usuarios->firstItem(), // Primer elemento de la página
+                     'to' => $usuarios->lastItem(), // Último elemento de la página
+                 ]
+             ]);
+         } catch (\Exception $e) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Error al obtener los usuarios',
+                 'error' => $e->getMessage()
+             ], 500);
+         }
+     }
+ 
+     public function cambiarEstado($id)
+     {
+         // Buscar el usuario por ID
+         $user = Usuario::find($id);
+         if (!$user) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Usuario no encontrado',
+             ], 404);
+         }
+     
+         // Cambiar el estado
+         $user->estado = ($user->estado === 'activo') ? 'inactivo' : 'activo';
+         $user->save();
+     
+         // Retornar una respuesta exitosa con el estado actualizado
+         return response()->json([
+             'success' => true,
+             'message' => 'Estado actualizado exitosamente',
+             'user' => [
+                 'idUsuario' => $user->idUsuario,
+                 'nombres' => $user->nombres,
+                 'apellidos' => $user->apellidos,
+                 'correo' => $user->correo,
+                 'rol' => $user->rol,
+                 'estado' => $user->estado, // Asegúrate de devolver el estado actualizado
+             ],
+         ]);
+     }
 
     public function obtenerTallas(Request $request)
     {
@@ -409,19 +443,6 @@ class AdminController extends Controller
         ], 200);
     }
 
-  
-    
-    // Obtener las 8 primeras categorías con estado "activo" para el home principal
-    public function listarCategorias()
-    {
-        // Filtrar las categorías por estado "activo" y obtener las primeras 8
-        $categorias = Categoria::where('estado', 'activo')
-                            ->take(12)
-                            ->get();
-
-        // Devolver las categorías como JSON con un mensaje de éxito
-        return response()->json(['success' => true, 'data' => $categorias], 200);
-    }
 
     public function obtenerCategorias(Request $request)
     {
@@ -666,29 +687,39 @@ class AdminController extends Controller
             return response()->json(['success' => true, 'message' => 'Pedido eliminado correctamente']);
         }
 
-
-    public function obtenerDireccionPedido($idPedido)
+         // Obtener el estado de la facturación electrónica
+    public function getEstadoFacturacion()
     {
-        $direccion = DetalleDireccionPedido::where('idPedido', $idPedido)
-            ->with('detalleDireccion') // Cargar datos de relación detalle_direccion
-            ->first();
+        $facturacion = Facturacion::first(); // Obtener el primer registro
+        if (!$facturacion) {
+            // Si no existe, crear un registro por defecto
+            $facturacion = Facturacion::create(['status' => 0]);
+        }
+        return response()->json([
+            'success' => true,
+            'activa' => $facturacion->status == 1,
+        ]);
+    }
 
-        if ($direccion) {
-            return response()->json([
-                'success' => true,
-                'direccion' => [
-                    'region' => $direccion->detalleDireccion->region,
-                    'provincia' => $direccion->detalleDireccion->provincia,
-                    'direccion' => $direccion->detalleDireccion->direccion,
-                    'latitud' => $direccion->detalleDireccion->latitud,
-                    'longitud' => $direccion->detalleDireccion->longitud,
-                ],
-            ]);
+    // Cambiar el estado de la facturación electrónica
+    public function toggleFacturacionElectronica(Request $request)
+    {
+        $request->validate([
+            'activa' => 'required|boolean',
+        ]);
+
+        $facturacion = Facturacion::first();
+        if (!$facturacion) {
+            // Si no existe, crear un registro por defecto
+            $facturacion = Facturacion::create(['status' => 0]);
         }
 
+        $facturacion->status = $request->activa ? 1 : 0;
+        $facturacion->save();
+
         return response()->json([
-            'success' => false,
-            'message' => 'Dirección no encontrada para el pedido'
+            'success' => true,
+            'activa' => $facturacion->status == 1,
         ]);
     }
 

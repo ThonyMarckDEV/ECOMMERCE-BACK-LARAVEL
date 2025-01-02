@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 
+use App\Mail\NotificacionPagoCompletadoBoleta;
+use App\Mail\NotificacionPagoCompletadoFactura;
 use App\Models\Facturacion;
 use Illuminate\Http\Request;
 use MercadoPago\MercadoPagoConfig;
@@ -470,39 +472,62 @@ class PaymentController extends Controller
                         ], 400);
                     }
                 } else {
+                    // Obtener el pedido por su id
+                    $pedido = Pedido::find($idPedido);
+                
+                    if (!$pedido) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No se encontró el pedido con ID: ' . $idPedido
+                        ], 404);
+                    }
+                
+                    // Obtener el usuario asociado al pedido
                     $usuario = Usuario::find($pedido->idUsuario);
-                    if ($usuario) {
-                        $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
-
-                        $detallesPedido = [];
-                        $total = 0;
-
-                        foreach ($pedido->detalles as $detalle) {
-                            $producto = Producto::find($detalle->idProducto);
-                            $detallesPedido[] = [
-                                'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
-                                'cantidad' => $detalle->cantidad,
-                                'subtotal' => $detalle->subtotal,
-                            ];
-                            $total += $detalle->subtotal;
-                        }
-
-                        $pdfDirectory = "boletas/{$usuario->idUsuario}/{$externalReference}";
-                        $pdfFileName = "boleta_pedido_{$externalReference}.pdf";
-                        $pdfPath = public_path("{$pdfDirectory}/{$pdfFileName}");
-
-                        if (!file_exists(public_path($pdfDirectory))) {
-                            mkdir(public_path($pdfDirectory), 0755, true);
-                        }
-
-                        $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
-
-                        Mail::to($usuario->correo)->send(new NotificacionPagoCompletado(
+                
+                    if (!$usuario) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No se encontró el usuario asociado al pedido con ID: ' . $idPedido
+                        ], 404);
+                    }
+                
+                    $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
+                
+                    // Obtener los detalles del pedido
+                    $detallesPedido = [];
+                    $total = 0;
+                
+                    foreach ($pedido->detalles as $detalle) {
+                        $producto = Producto::find($detalle->idProducto);
+                        $detallesPedido[] = [
+                            'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
+                            'cantidad' => $detalle->cantidad,
+                            'subtotal' => $detalle->subtotal,
+                        ];
+                        $total += $detalle->subtotal;
+                    }
+                
+                    // Determinar el tipo de comprobante
+                    if ($pedido->tipo_comprobante === 'boleta') {
+                        // Enviar notificación de pago completado para boleta
+                        Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoBoleta(
                             $nombreCompleto,
                             $detallesPedido,
-                            $total,
-                            $pdfPath
+                            $total
                         ));
+                    } elseif ($pedido->tipo_comprobante === 'factura') {
+                        // Enviar notificación de pago completado para factura
+                        Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoFactura(
+                            $nombreCompleto,
+                            $detallesPedido,
+                            $total
+                        ));
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Tipo de comprobante no válido para el pedido con ID: ' . $idPedido
+                        ], 400);
                     }
                 }
             } else {

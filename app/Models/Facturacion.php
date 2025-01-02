@@ -10,6 +10,8 @@ class Facturacion extends Model
     use HasFactory;
     protected $primaryKey = 'id';
 
+    public $timestamps = false;
+
     protected $table = 'facturacion';
 
     protected $fillable = [

@@ -3,10 +3,10 @@
 use App\Http\Controllers\AdminController;
 
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SuperAdminController;
 
 //RUTAS
 //================================================================================================
@@ -30,9 +30,11 @@ use App\Http\Controllers\AuthController;
         
         Route::post('/change-passwordUser', [AuthController::class, 'changePasswordUser']);
 
+        //PARA HOME
+
         Route::get('productos', [ClienteController::class, 'listarProductos']);
 
-        Route::get('/listarCategorias', [AdminController::class, 'listarCategorias']);
+        Route::get('/listarCategorias', [ClienteController::class, 'listarCategorias']);
 
         // Ruta para verificar el token de correo
         Route::post('verificar-token', [AuthController::class, 'verificarCorreo']);
@@ -43,9 +45,8 @@ use App\Http\Controllers\AuthController;
 
         Route::post('actualizar-comprobante', [PaymentController::class, 'actualizarComprobante']);
 
-
 //================================================================================================
-    //RUTAS  AUTH PROTEGIDAS
+    //RUTAS  AUTH PROTEGIDAS par todos los roles
 
     Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
 
@@ -63,53 +64,67 @@ use App\Http\Controllers\AuthController;
 //================================================================================================
     //RUTAS PROTEGIDAS A
     // RUTAS PARA ADMINISTRADOR VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
-    Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () { 
-        Route::post('register', [AdminController::class, 'register']);
+    Route::middleware(['auth.jwt', 'checkRoleMW:superadmin'])->group(function () { 
 
+        // Listar usuarios
+        Route::get('/listarUsuariosAdmin', [SuperAdminController::class, 'listarUsuarios']);
+        // Editar usuario
+        Route::put('/listarUsuariosAdmin/{id}', [SuperAdminController::class, 'editarUsuario']);
+        // Cambiar estado de usuario (activo/inactivo)
+        Route::patch('/listarUsuariosAdmin/{id}/cambiar-estado', [SuperAdminController::class, 'cambiarEstado']);
+
+         // Obtener el estado de la facturación electrónica
+        Route::get('/configuracion/facturacion-electronica', [SuperAdminController::class, 'getEstadoFacturacion']);
+        // Cambiar el estado de la facturación electrónica
+        Route::put('/configuracion/facturacion-electronica', [SuperAdminController::class, 'toggleFacturacionElectronica']);
+
+
+        Route::post('register', [SuperAdminController::class, 'register']);
+        Route::post('adminAgregar', [SuperAdminController::class, 'agregarUsuario']);
     
-        Route::put('/actualizarUsuario/{id}', [AdminController::class, 'actualizarUsuario']);
-        Route::delete('/eliminarUsuario/{id}', [AdminController::class, 'eliminarUsuario']);
+        Route::put('/actualizarUsuario/{id}', [SuperAdminController::class, 'actualizarUsuario']);
+        Route::delete('/eliminarUsuario/{id}', [SuperAdminController::class, 'eliminarUsuario']);
 
-        Route::post('/agregarProducto', [AdminController::class, 'agregarProducto']);
-        Route::post('/actualizarProducto/{id}', [AdminController::class, 'actualizarProducto']);
-        Route::delete('/eliminarProducto/{id}', [AdminController::class, 'eliminarProducto']);
+        Route::post('/agregarProducto', [SuperAdminController::class, 'agregarProducto']);
+        Route::post('/actualizarProducto/{id}', [SuperAdminController::class, 'actualizarProducto']);
+        Route::delete('/eliminarProducto/{id}', [SuperAdminController::class, 'eliminarProducto']);
 
-        Route::post('/categorias', [AdminController::class, 'agregarCategorias']);
-        Route::post('/actualizarCategoria/{id}', [AdminController::class, 'actualizarCategoria']);
-        Route::delete('/eliminarCategoria/{id}', [AdminController::class, 'eliminarCategoria']);
-        Route::get('/obtenerCategorias', [AdminController::class, 'obtenerCategorias']);
-        Route::put('/cambiarEstadoCategoria/{id}', [AdminController::class, 'cambiarEstadoCategoria']);
+        Route::post('/categorias', [SuperAdminController::class, 'agregarCategorias']);
+        Route::post('/actualizarCategoria/{id}', [SuperAdminController::class, 'actualizarCategoria']);
+        Route::delete('/eliminarCategoria/{id}', [SuperAdminController::class, 'eliminarCategoria']);
+        Route::get('/obtenerCategorias', [SuperAdminController::class, 'obtenerCategorias']);
+        Route::put('/cambiarEstadoCategoria/{id}', [SuperAdminController::class, 'cambiarEstadoCategoria']);
 
-        Route::get('/obtenerTallas', [AdminController::class, 'obtenerTallas']);
-        Route::post('/agregarTalla', [AdminController::class, 'agregarTalla']);
-        Route::put('/editarTalla/{id}', [AdminController::class, 'editarTalla']);
+        Route::get('/obtenerTallas', [SuperAdminController::class, 'obtenerTallas']);
+        Route::post('/agregarTalla', [SuperAdminController::class, 'agregarTalla']);
+        Route::put('/editarTalla/{id}', [SuperAdminController::class, 'editarTalla']);
    
-        Route::get('/admin/pedidos', [AdminController::class, 'getAllOrders']);
+        Route::get('/admin/pedidos', [SuperAdminController::class, 'getAllOrders']);
 
-        Route::put('/admin/pedidos/{idPedido}', [AdminController::class, 'updateOrderStatus']);
-        Route::delete('/admin/pedidos/{idPedido}', [AdminController::class, 'deleteOrder']);
-        Route::get('/pagos/comprobante/{userId}/{pagoId}/{filename}', [AdminController::class, 'verComprobante']);
+        Route::put('/admin/pedidos/{idPedido}', [SuperAdminController::class, 'updateOrderStatus']);
+        Route::delete('/admin/pedidos/{idPedido}', [SuperAdminController::class, 'deleteOrder']);
+        Route::get('/pagos/comprobante/{userId}/{pagoId}/{filename}', [SuperAdminController::class, 'verComprobante']);
 
-        Route::get('/obtenerDireccionPedido/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
-
-
-        Route::get('/reportes/total-ingresos', [AdminController::class, 'totalIngresos']);
-        Route::get('/reportes/total-pedidos-completados', [AdminController::class, 'totalPedidosCompletados']);
-        Route::get('/reportes/total-clientes', [AdminController::class, 'totalClientes']);
-        Route::get('/reportes/total-productos', [AdminController::class, 'totalProductos']);
-        Route::get('/reportes/productos-bajo-stock', [AdminController::class, 'productosBajoStock']);
-        Route::get('/reportes/pagos-completados', [AdminController::class, 'obtenerPagosCompletados']);
-        Route::get('/reportes/pedidos-por-mes', [AdminController::class, 'pedidosPorMes']);
-        Route::get('/reportes/ingresos-por-mes', [AdminController::class, 'ingresosPorMes']);
+        Route::get('/obtenerDireccionPedido/{idPedido}', [SuperAdminController::class, 'obtenerDireccionPedido']);
 
 
-        Route::post('/admin/pedidos/cantidad', [AdminController::class, 'obtenerCantidadPedidosAdmin']);
+        Route::get('/reportes/total-ingresos', [SuperAdminController::class, 'totalIngresos']);
+        Route::get('/reportes/total-pedidos-completados', [SuperAdminController::class, 'totalPedidosCompletados']);
+        Route::get('/reportes/total-clientes', [SuperAdminController::class, 'totalClientes']);
+        Route::get('/reportes/total-productos', [SuperAdminController::class, 'totalProductos']);
+        Route::get('/reportes/productos-bajo-stock', [SuperAdminController::class, 'productosBajoStock']);
+        Route::get('/reportes/pagos-completados', [SuperAdminController::class, 'obtenerPagosCompletados']);
+        Route::get('/reportes/pedidos-por-mes', [SuperAdminController::class, 'pedidosPorMes']);
+        Route::get('/reportes/ingresos-por-mes', [SuperAdminController::class, 'ingresosPorMes']);
+
+
+        Route::post('/admin/pedidos/cantidad', [SuperAdminController::class, 'obtenerCantidadPedidosAdmin']);
 
         
 
-        Route::get('listarUsuarios', [AdminController::class, 'listarUsuarios']);
+        Route::get('listarUsuarios', [SuperAdminController::class, 'listarUsuarios']);
 
-        Route::get('/listarProductos', [AdminController::class, 'listarProductos']);
+        Route::get('/listarProductos', [SuperAdminController::class, 'listarProductos']);
     });
 
 
@@ -135,7 +150,7 @@ use App\Http\Controllers\AuthController;
     
     
         // Ruta para listar pedidos de un usuario
-        Route::get('/obtenerDireccionPedidoUser/{idPedido}', [AdminController::class, 'obtenerDireccionPedido']);
+        Route::get('/obtenerDireccionPedidoUser/{idPedido}', [ClienteController::class, 'obtenerDireccionPedido']);
         Route::get('/listarDireccion/{idUsuario}', [ClienteController::class, 'listarDireccion']);
         Route::get('/listarDireccionPedido/{idUsuario}', [ClienteController::class, 'listarDireccionPedido']);
 

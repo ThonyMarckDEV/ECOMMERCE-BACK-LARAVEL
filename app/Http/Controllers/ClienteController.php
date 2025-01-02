@@ -26,6 +26,8 @@ use App\Mail\NotificacionDireccionAgregada;
 use App\Mail\NotificacionDireccionEliminada;
 use App\Mail\NotificacionDireccionPredeterminada;
 use App\Mail\CodigoVerificacion;
+use App\Models\Categoria;
+use App\Models\DetalleDireccionPedido;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
@@ -2003,6 +2005,44 @@ class ClienteController extends Controller
     
         return response()->json(['message' => 'Pedido cancelado exitosamente'], 200);
     }
+
+    public function obtenerDireccionPedido($idPedido)
+    {
+        $direccion = DetalleDireccionPedido::where('idPedido', $idPedido)
+            ->with('detalleDireccion') // Cargar datos de relación detalle_direccion
+            ->first();
+
+        if ($direccion) {
+            return response()->json([
+                'success' => true,
+                'direccion' => [
+                    'region' => $direccion->detalleDireccion->region,
+                    'provincia' => $direccion->detalleDireccion->provincia,
+                    'direccion' => $direccion->detalleDireccion->direccion,
+                    'latitud' => $direccion->detalleDireccion->latitud,
+                    'longitud' => $direccion->detalleDireccion->longitud,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Dirección no encontrada para el pedido'
+        ]);
+    }
+
+    // Obtener las 8 primeras categorías con estado "activo" para el home principal
+    public function listarCategorias()
+    {
+        // Filtrar las categorías por estado "activo" y obtener las primeras 8
+        $categorias = Categoria::where('estado', 'activo')
+                            ->take(12)
+                            ->get();
+
+        // Devolver las categorías como JSON con un mensaje de éxito
+        return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
 
     //APIS ESTADISTICA
 
