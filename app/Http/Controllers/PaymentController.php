@@ -511,7 +511,7 @@ class PaymentController extends Controller
                     // Determinar el tipo de comprobante
                     if ($pedido->tipo_comprobante === 'boleta') {
                         $pdfDirectory = "storage/comprobantesEcommerce/Boletas/";
-                        $pdfFileName = "boleta_" . date('Ymd') . "_" . $idPedido . ".pdf";
+                        $pdfFileName = "boleta_" . date('Ymd_His') . "_" . $idPedido . ".pdf"; // Agregar la hora
                         $pdfPath = $pdfDirectory . $pdfFileName;
                 
                         if (!file_exists($pdfDirectory)) {
@@ -529,7 +529,7 @@ class PaymentController extends Controller
                         ));
                     } elseif ($pedido->tipo_comprobante === 'factura') {
                         $pdfDirectory = "storage/comprobantesEcommerce/Facturas/";
-                        $pdfFileName = "factura_" . date('Ymd') . "_" . $idPedido . ".pdf";
+                        $pdfFileName = "factura_" . date('Ymd_His') . "_" . $idPedido . ".pdf"; // Agregar la hora
                         $pdfPath = $pdfDirectory . $pdfFileName;
                 
                         if (!file_exists($pdfDirectory)) {
@@ -542,7 +542,7 @@ class PaymentController extends Controller
                             $detallesPedido,
                             $total,
                             $pdfPath,
-                            $pedido->ruc  // Pass the RUC from the pedido
+                            $pedido->ruc  // Pasar el RUC del pedido
                         ));
                     } else {
                         return response()->json([
