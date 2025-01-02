@@ -14,16 +14,23 @@ class NotificacionPagoCompletadoBoleta extends Mailable
     public $detallesPedido;
     public $total;
 
-    public function __construct($nombreCompleto, $detallesPedido, $total)
+    public $pdfPath;
+
+    public function __construct($nombreCompleto, $detallesPedido, $total,$pdfPath)
     {
         $this->nombreCompleto = $nombreCompleto;
         $this->detallesPedido = $detallesPedido;
         $this->total = $total;
+        $this->pdfPath = $pdfPath;
     }
 
     public function build()
     {
         return $this->subject('Notificación de Pago Completado - Boleta')
-                    ->view('emails.notificacion_pago_completado_boleta');
+                    ->view('emails.notificacion_pago_completado_boleta')
+                    ->attach($this->pdfPath, [
+                        'as' => 'boleta.pdf',
+                        'mime' => 'application/pdf',
+                    ]);
     }
 }

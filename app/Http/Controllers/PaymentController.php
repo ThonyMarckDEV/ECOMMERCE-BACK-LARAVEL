@@ -524,11 +524,9 @@ class PaymentController extends Controller
                         Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoBoleta(
                             $nombreCompleto,
                             $detallesPedido,
-                            $total
-                        )->attach($pdfPath, [
-                            'as' => $pdfFileName,
-                            'mime' => 'application/pdf',
-                        ]));
+                            $total,
+                            $pdfPath
+                        ));
                     } elseif ($pedido->tipo_comprobante === 'factura') {
                         $pdfDirectory = "storage/comprobantesEcommerce/Facturas/";
                         $pdfFileName = "factura_" . date('Ymd') . "_" . $idPedido . ".pdf";
@@ -539,16 +537,13 @@ class PaymentController extends Controller
                         }
                 
                         $this->generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $pedido->ruc);
-                
-                        // Enviar notificación con archivo adjunto
                         Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoFactura(
                             $nombreCompleto,
                             $detallesPedido,
-                            $total
-                        )->attach($pdfPath, [
-                            'as' => $pdfFileName,
-                            'mime' => 'application/pdf',
-                        ]));
+                            $total,
+                            $pdfPath,
+                            $pedido->ruc  // Pass the RUC from the pedido
+                        ));
                     } else {
                         return response()->json([
                             'success' => false,
@@ -568,70 +563,180 @@ class PaymentController extends Controller
         }
     }
 
-
-    private function generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total)
-    {
+    private function generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total) {
         $pdf = new FPDF();
         $pdf->AddPage();
-        $pdf->SetFont('Arial', 'B', 16);
-
-        // Título
-        $pdf->Cell(0, 10, "Boleta de Pago", 0, 1, 'C');
-        $pdf->Ln(10);
-
-        // Información del cliente
-        $pdf->SetFont('Arial', '', 12);
-        $pdf->Cell(0, 10, "Cliente: {$nombreCompleto}", 0, 1);
-        $pdf->Ln(5);
-
-        // Detalles del pedido
-        $pdf->Cell(0, 10, "Detalles del Pedido:", 0, 1);
+        
+        // Configuración de márgenes
+        $pdf->SetMargins(20, 20, 20);
+        
+        // Encabezado con logo y título
+        $pdf->SetFont('Arial', 'B', 24);
+        $pdf->Cell(0, 20, "ECOMMERCE STORE", 0, 1, 'C');
         $pdf->SetFont('Arial', '', 10);
+        $pdf->Cell(0, 5, "Av. Elegancia 123 - Lima", 0, 1, 'C');
+        $pdf->Cell(0, 5, "Tel: +51 999 999 999", 0, 1, 'C');
+        
+        // Línea decorativa
+        $pdf->Ln(5);
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Line(20, $pdf->GetY(), 190, $pdf->GetY());
+        $pdf->Ln(10);
+        
+        // Título del documento
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->Cell(0, 10, "BOLETA DE VENTA", 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->Cell(0, 5, "Fecha: " . date('d/m/Y'), 0, 1, 'C');
+        $pdf->Ln(10);
+        
+        // Información del cliente en un marco elegante
+        $pdf->SetFillColor(248, 248, 248);
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Rect(20, $pdf->GetY(), 170, 20, 3, 'DF');
+        $pdf->SetXY(25, $pdf->GetY() + 5);
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->Cell(30, 5, "Cliente:", 0, 0);
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->Cell(0, 5, $nombreCompleto, 0, 1);
+        $pdf->Ln(20);
+        
+        // Cabecera de la tabla de productos
+        $pdf->SetFillColor(240, 240, 240);
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(80, 10, "Producto", 1, 0, 'C', true);
+        $pdf->Cell(30, 10, "Cantidad", 1, 0, 'C', true);
+        $pdf->Cell(40, 10, "Precio Unit. (IGV. 18%)", 1, 0, 'C', true);
+        $pdf->Cell(20, 10, "Total", 1, 1, 'C', true);
+        
+        // Detalles de productos
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetFillColor(255, 255, 255);
         foreach ($detallesPedido as $detalle) {
-            $pdf->Cell(0, 10, "Producto: {$detalle['producto']}, Cantidad: {$detalle['cantidad']}, Subtotal: S/{$detalle['subtotal']}", 0, 1);
+            $pdf->Cell(80, 8, $detalle['producto'], 1, 0, 'L', true);
+            $pdf->Cell(30, 8, $detalle['cantidad'], 1, 0, 'C', true);
+            $precioUnit = $detalle['subtotal'] / $detalle['cantidad'];
+            $pdf->Cell(40, 8, "S/ " . number_format($precioUnit, 2), 1, 0, 'R', true);
+            $pdf->Cell(20, 8, "S/ " . number_format($detalle['subtotal'], 2), 1, 1, 'R', true);
         }
-
+        
         // Total
         $pdf->Ln(5);
         $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(0, 10, "Total: S/{$total}", 0, 1);
-
-        // Guardar el PDF en la ruta especificada
+        $pdf->Cell(130);
+        $pdf->Cell(20, 10, "Total:", 0, 0, 'R');
+        $pdf->Cell(20, 10, "S/ " . number_format($total, 2), 0, 1, 'R');
+        
+        // Pie de página con agradecimiento
+        $pdf->Ln(15);
+        $pdf->SetFont('Arial', 'I', 10);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 10, "Gracias por su preferencia", 0, 1, 'C');
+        
+        // QR Code placeholder en la esquina inferior derecha
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Rect(150, 240, 30, 30);
+        
+        // Guardar el PDF
         $pdf->Output('F', $pdfPath);
     }
 
-    private function generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $ruc)
-    {
+
+    private function generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $ruc) {
         $pdf = new FPDF();
         $pdf->AddPage();
-        $pdf->SetFont('Arial', 'B', 16);
-
-        // Título
-        $pdf->Cell(0, 10, "Factura de Pago", 0, 1, 'C');
-        $pdf->Ln(10);
-
-        // Información del cliente
-        $pdf->SetFont('Arial', '', 12);
-        $pdf->Cell(0, 10, "Cliente: {$nombreCompleto}", 0, 1);
-        $pdf->Cell(0, 10, "RUC: {$ruc}", 0, 1);
-        $pdf->Ln(5);
-
-        // Detalles del pedido
-        $pdf->Cell(0, 10, "Detalles del Pedido:", 0, 1);
+        
+        // Configuración de márgenes
+        $pdf->SetMargins(20, 20, 20);
+        
+        // Encabezado con logo y título
+        $pdf->SetFont('Arial', 'B', 24);
+        $pdf->Cell(0, 20, "ECOMMERCE STORE", 0, 1, 'C');
         $pdf->SetFont('Arial', '', 10);
-        foreach ($detallesPedido as $detalle) {
-            $pdf->Cell(0, 10, "Producto: {$detalle['producto']}, Cantidad: {$detalle['cantidad']}, Subtotal: S/{$detalle['subtotal']}", 0, 1);
-        }
-
-        // Total
+        $pdf->Cell(0, 5, "Av. Elegancia 123 - Lima", 0, 1, 'C');
+        $pdf->Cell(0, 5, "Tel: +51 999 999 999", 0, 1, 'C');
+        $pdf->Cell(0, 5, "RUC: 20XXXXXXXXX", 0, 1, 'C');
+        
+        // Línea decorativa
         $pdf->Ln(5);
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Line(20, $pdf->GetY(), 190, $pdf->GetY());
+        $pdf->Ln(10);
+        
+        // Título del documento
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->Cell(0, 10, "FACTURA ELECTRÓNICA", 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->Cell(0, 5, "Fecha: " . date('d/m/Y'), 0, 1, 'C');
+        $pdf->Ln(10);
+        
+        // Información del cliente en un marco elegante
+        $pdf->SetFillColor(248, 248, 248);
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Rect(20, $pdf->GetY(), 170, 30, 3, 'DF');
+        $pdf->SetXY(25, $pdf->GetY() + 5);
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->Cell(30, 5, "Cliente:", 0, 0);
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->Cell(0, 5, $nombreCompleto, 0, 1);
+        $pdf->SetXY(25, $pdf->GetY() + 5);
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->Cell(30, 5, "RUC:", 0, 0);
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->Cell(0, 5, $ruc, 0, 1);
+        $pdf->Ln(20);
+        
+        // Cabecera de la tabla de productos
+        $pdf->SetFillColor(240, 240, 240);
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(80, 10, "Producto", 1, 0, 'C', true);
+        $pdf->Cell(30, 10, "Cantidad", 1, 0, 'C', true);
+        $pdf->Cell(40, 10, "Precio Unit.", 1, 0, 'C', true);
+        $pdf->Cell(20, 10, "Total", 1, 1, 'C', true);
+        
+        // Detalles de productos
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetFillColor(255, 255, 255);
+        foreach ($detallesPedido as $detalle) {
+            $pdf->Cell(80, 8, $detalle['producto'], 1, 0, 'L', true);
+            $pdf->Cell(30, 8, $detalle['cantidad'], 1, 0, 'C', true);
+            $precioUnit = $detalle['subtotal'] / $detalle['cantidad'];
+            $pdf->Cell(40, 8, "S/ " . number_format($precioUnit, 2), 1, 0, 'R', true);
+            $pdf->Cell(20, 8, "S/ " . number_format($detalle['subtotal'], 2), 1, 1, 'R', true);
+        }
+        
+        // Subtotal, IGV y Total
+        $pdf->Ln(5);
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->Cell(130);
+        $pdf->Cell(20, 7, "Subtotal:", 0, 0, 'R');
+        $pdf->Cell(20, 7, "S/ " . number_format($total / 1.18, 2), 0, 1, 'R');
+        
+        $pdf->Cell(130);
+        $pdf->Cell(20, 7, "IGV (18%):", 0, 0, 'R');
+        $pdf->Cell(20, 7, "S/ " . number_format($total - ($total / 1.18), 2), 0, 1, 'R');
+        
         $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(0, 10, "Total: S/{$total}", 0, 1);
-
-        // Guardar el PDF en la ruta especificada
+        $pdf->Cell(130);
+        $pdf->Cell(20, 10, "Total:", 0, 0, 'R');
+        $pdf->Cell(20, 10, "S/ " . number_format($total, 2), 0, 1, 'R');
+        
+        // Pie de página con información adicional
+        $pdf->Ln(15);
+        $pdf->SetFont('Arial', 'I', 10);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 10, "Gracias por su preferencia", 0, 1, 'C');
+        $pdf->Cell(0, 5, "Este documento es una representación impresa de un Comprobante Electrónico", 0, 1, 'C');
+        
+        // QR Code placeholder en la esquina inferior derecha
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Rect(150, 240, 30, 30);
+        
+        // Guardar el PDF
         $pdf->Output('F', $pdfPath);
     }
-
 
     public function FacturacionActivaFactura($idPedido)
     {

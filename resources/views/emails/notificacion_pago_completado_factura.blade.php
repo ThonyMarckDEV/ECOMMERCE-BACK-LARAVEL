@@ -1,74 +1,188 @@
+<!-- Factura Template -->
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Notificación de Pago Completado - Factura</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxury Store - Factura Electrónica</title>
     <style>
+        /* Common Styles */
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f8f8;
             color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
         }
         .container {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: 2px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px solid #eaeaea;
+            padding-bottom: 30px;
+            margin-bottom: 30px;
         }
         h1 {
-            color: #4CAF50;
-            text-align: center;
+            font-size: 24px;
+            font-weight: 300;
+            color: #1a1a1a;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
         }
         .details {
-            margin-top: 20px;
+            margin: 30px 0;
         }
-        .details table {
+        table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
         }
-        .details th, .details td {
-            padding: 10px;
-            border: 1px solid #ddd;
+        th {
+            background-color: #fafafa;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #666;
+            padding: 15px;
             text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eaeaea;
+            color: #333;
+            font-size: 14px;
+        }
+        .total-section {
+            margin-top: 30px;
+            text-align: right;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 8px;
         }
         .total {
-            font-size: 18px;
-            font-weight: bold;
-            text-align: right;
+            font-size: 20px;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eaeaea;
+            color: #999;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 14px;
             margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .order-info {
+            background-color: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .highlight {
+            color: #1a1a1a;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Notificación de Pago Completado - Factura</h1>
-        <p>Hola, {{ $nombreCompleto }},</p>
-        <p>Su pago ha sido completado exitosamente. Aquí están los detalles de su pedido:</p>
+        <div class="logo">ECOMMERCE STORE</div>
+        
+        <div class="header">
+            <h1>Factura Electrónica</h1>
+            <p>Comprobante de Pago</p>
+        </div>
+
+        <div class="greeting">
+            Estimado(a) {{ $nombreCompleto }},
+        </div>
+
+        <div class="order-info">
+            <span class="highlight">RUC:</span> {{ $ruc }}<br>
+            <span class="highlight">Nº de Factura:</span> F001-{{ rand(100000, 999999) }}<br>
+            <span class="highlight">Fecha:</span> {{ date('d/m/Y') }}
+        </div>
+
         <div class="details">
             <table>
                 <thead>
                     <tr>
                         <th>Producto</th>
                         <th>Cantidad</th>
-                        <th>Subtotal</th>
+                        <th>Valor Unit.</th>
+                        <th>Subtotal (IGV.18%)</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($detallesPedido as $detalle)
-                        <tr>
-                            <td>{{ $detalle['producto'] }}</td>
-                            <td>{{ $detalle['cantidad'] }}</td>
-                            <td>S/ {{ $detalle['subtotal'] }}</td>
-                        </tr>
+                    <tr>
+                        <td>{{ $detalle['producto'] }}</td>
+                        <td>{{ $detalle['cantidad'] }}</td>
+                        <td>S/ {{ number_format($detalle['subtotal'] / $detalle['cantidad'], 2) }}</td>
+                        <td>S/ {{ number_format($detalle['subtotal'], 2) }}</td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
-        <div class="total">
-            <p>Total: S/ {{ $total }}</p>
+
+        <div class="total-section">
+            <table style="text-align: right;">
+                <tr>
+                    <td>Subtotal:</td>
+                    <td>S/ {{ number_format($total / 1.18, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>IGV (18%):</td>
+                    <td>S/ {{ number_format($total - ($total / 1.18), 2) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total:</strong></td>
+                    <td><strong>S/ {{ number_format($total, 2) }}</strong></td>
+                </tr>
+            </table>
         </div>
-        <p>Gracias por su compra.</p>
+
+        <div class="footer">
+            <p>Este documento es una representación digital de su factura electrónica</p>
+            <p>© {{ date('Y') }} ECOMMERCE Store. Todos los derechos reservados.</p>
+        </div>
     </div>
 </body>
 </html>
