@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Usuario;
+use App\Models\Log as LogUser;
 use Illuminate\Http\Request;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -18,6 +19,7 @@ use App\Mail\VerificarCorreo;
 use Illuminate\Support\Str;
 use Exception;
 use App\Mail\CuentaVerificada;
+use App\Models\ActividadUsuario;
 use Illuminate\Support\Facades\DB;
 use Google_Client;
 use Laravel\Socialite\Facades\Socialite;
@@ -33,17 +35,26 @@ use Laravel\Socialite\Facades\Socialite;
 */
 class AuthController extends Controller
 {
-    /**
-     * Login
+   /**
+     * Login de usuario
+     * 
+     * Este endpoint permite a los usuarios autenticarse en el sistema utilizando su correo electrónico y contraseña.
+     * Si las credenciales son válidas, se genera un token JWT que el usuario puede utilizar para acceder a otros endpoints protegidos.
+     * Además, se registra la actividad del usuario y se actualiza su estado a "loggedOn".
+     *
      * @OA\Post(
      *     path="/api/login",
      *     tags={"AUTH CONTROLLER"},
      *     summary="Login de usuario",
+     *     description="Permite a los usuarios autenticarse en el sistema y obtener un token JWT.",
+     *     operationId="login",
      *     @OA\RequestBody(
      *         required=true,
+     *         description="Credenciales del usuario",
      *         @OA\JsonContent(
-     *             @OA\Property(property="correo", type="string", example="usuario@dominio.com"),
-     *             @OA\Property(property="password", type="string", example="contraseña123")
+     *             required={"correo","password"},
+     *             @OA\Property(property="correo", type="string", format="email", example="usuario@dominio.com"),
+     *             @OA\Property(property="password", type="string", format="password", example="contraseña123")
      *         )
      *     ),
      *     @OA\Response(
@@ -54,16 +65,39 @@ class AuthController extends Controller
      *         )
      *     ),
      *     @OA\Response(
+     *         response=400,
+     *         description="Datos de entrada inválidos",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="El campo correo es requerido.")
+     *         )
+     *     ),
+     *     @OA\Response(
      *         response=401,
-     *         description="Credenciales inválidas"
+     *         description="Credenciales inválidas",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Credenciales inválidas")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Usuario inactivo",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Usuario inactivo. Por favor, contacte al administrador.")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=404,
-     *         description="Usuario no encontrado"
+     *         description="Usuario no encontrado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Usuario no encontrado")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=500,
-     *         description="Error al generar el token"
+     *         description="Error al generar el token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="No se pudo crear el token")
+     *         )
      *     )
      * )
      */
@@ -90,9 +124,9 @@ class AuthController extends Controller
                 return response()->json(['error' => 'Usuario no encontrado'], 404);
             }
 
-            // Verificar si el usuario ya está logueado
-            if ($usuario->status === 'loggedOn') {
-                return response()->json(['message' => 'Usuario ya logueado'], 409);
+            // Verificar si el usuario está inactivo
+            if ($usuario->estado === 'inactivo') {
+                return response()->json(['error' => 'Usuario inactivo. Por favor, contacte al administrador.'], 403);
             }
 
             // Intentar autenticar y generar el token JWT usando el campo 'correo'
@@ -100,8 +134,60 @@ class AuthController extends Controller
                 return response()->json(['error' => 'Credenciales inválidas'], 401);
             }
 
+            // Obtener el dispositivo
+            $dispositivo = $this->obtenerDispositivo();
+
+            // Verificar si ya existe un registro en la tabla 'actividad_usuario' para este usuario
+            $actividad = ActividadUsuario::where('idUsuario', $usuario->idUsuario)->first();
+
+            if (!$actividad) {
+                // Si no existe, crear un nuevo registro
+                ActividadUsuario::create([
+                    'idUsuario' => $usuario->idUsuario,
+                    'last_activity' => now(),
+                    'dispositivo' => $dispositivo,
+                    'jwt' => $token,
+                ]);
+            } else {
+                // Si ya existe, verificar si el dispositivo ha cambiado
+                if ($actividad->dispositivo !== $dispositivo) {
+                    // Si el dispositivo ha cambiado, invalidar el token anterior
+                    if ($actividad->jwt) {
+                        try {
+                            // Configurar el token en JWTAuth
+                            JWTAuth::setToken($actividad->jwt);
+
+                            // Verificar que el token sea válido antes de intentar invalidarlo
+                            if (JWTAuth::check()) {
+                                // Invalidar el token y forzar su expiración
+                                JWTAuth::invalidate(true);
+                            }
+                        } catch (\Exception $e) {
+                            // Registrar el error si la invalidación falla
+                            Log::error('Error al invalidar el token anterior: ' . $e->getMessage());
+                        }
+                    }
+                }
+
+                // Actualizar la actividad con el nuevo dispositivo y token
+                $actividad->update([
+                    'last_activity' => now(),
+                    'dispositivo' => $dispositivo,
+                    'jwt' => $token,  // Asigna el nuevo token
+                ]);
+            }
+
             // Actualizar el estado del usuario a "loggedOn"
             $usuario->update(['status' => 'loggedOn']);
+
+            // Obtener el nombre completo del usuario para el log
+            $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
+
+            // Definir la acción y mensaje para el log
+            $accion = "$nombreUsuario inició sesión desde el dispositivo: $dispositivo";
+
+            // Llamada a la función agregarLog para registrar el log
+            $this->agregarLog($usuario->idUsuario, $accion);
 
             return response()->json(compact('token'));
         } catch (JWTException $e) {
@@ -109,9 +195,13 @@ class AuthController extends Controller
         }
     }
 
-        /**
-     * Login de usuario con Google y generación de token JWT.
-     */
+    // Función para obtener el dispositivo
+    private function obtenerDispositivo()
+    {
+        return request()->header('User-Agent');  // Obtiene el User-Agent del encabezado de la solicitud
+    }
+
+
     public function loginWithGoogle(Request $request)
     {
         // Validar que el token de Google esté presente
@@ -141,18 +231,73 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Si el usuario está registrado, pero no está logueado, actualizar su estado
-            if ($usuario->status !== 'loggedOn') {
-                $usuario->update(['status' => 'loggedOn']);
+            // Verificar si el usuario está inactivo
+            if ($usuario->estado === 'inactivo') {
+                return response()->json(['error' => 'Usuario inactivo. Por favor, contacte al administrador.'], 403);
             }
 
-            // Generar el token JWT para el usuario
+            // Generar el token JWT manualmente
             $token = JWTAuth::fromUser($usuario);
+
+            // Obtener el dispositivo
+            $dispositivo = $this->obtenerDispositivo();
+
+            // Verificar si ya existe un registro en la tabla 'actividad_usuario' para este usuario
+            $actividad = ActividadUsuario::where('idUsuario', $usuario->idUsuario)->first();
+
+            if (!$actividad) {
+                // Si no existe, crear un nuevo registro
+                ActividadUsuario::create([
+                    'idUsuario' => $usuario->idUsuario,
+                    'last_activity' => now(),
+                    'dispositivo' => $dispositivo,
+                    'jwt' => $token,
+                ]);
+            } else {
+                // Si ya existe, verificar si el dispositivo ha cambiado
+                if ($actividad->dispositivo !== $dispositivo) {
+                    // Si el dispositivo ha cambiado, invalidar el token anterior
+                    if ($actividad->jwt) {
+                        try {
+                            // Configurar el token en JWTAuth
+                            JWTAuth::setToken($actividad->jwt);
+
+                            // Verificar que el token sea válido antes de intentar invalidarlo
+                            if (JWTAuth::check()) {
+                                // Invalidar el token y forzar su expiración
+                                JWTAuth::invalidate(true);
+                            }
+                        } catch (\Exception $e) {
+                            // Registrar el error si la invalidación falla
+                            Log::error('Error al invalidar el token anterior: ' . $e->getMessage());
+                        }
+                    }
+                }
+
+                // Actualizar la actividad con el nuevo dispositivo y token
+                $actividad->update([
+                    'last_activity' => now(),
+                    'dispositivo' => $dispositivo,
+                    'jwt' => $token,  // Asigna el nuevo token
+                ]);
+            }
+
+            // Actualizar el estado del usuario a "loggedOn"
+            $usuario->update(['status' => 'loggedOn']);
+
+            // Obtener el nombre completo del usuario para el log
+            $nombreUsuario = $usuario->nombre . ' ' . $usuario->apellidos;
+
+            // Definir la acción y mensaje para el log
+            $accion = "$nombreUsuario inició sesión desde el dispositivo: $dispositivo";
+
+            // Llamada a la función agregarLog para registrar el log
+            $this->agregarLog($usuario->idUsuario, $accion);
 
             return response()->json(compact('token'));
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error en el inicio de sesión con Google'], 500);
+            return response()->json(['error' => 'Error en el inicio de sesión con Google: ' . $e->getMessage()], 500);
         }
     }
 
@@ -540,7 +685,12 @@ class AuthController extends Controller
         }
     }
 
-    /**
+     /**
+     * Cerrar sesión del usuario
+     * 
+     * Este endpoint permite a los usuarios cerrar sesión en el sistema. Revoca el token JWT actual
+     * y actualiza el estado del usuario a "loggedOff". Además, registra la acción en el log de actividades.
+     *
      * @OA\Post(
      *     path="/api/logout",
      *     summary="Cerrar sesión del usuario",
@@ -550,22 +700,39 @@ class AuthController extends Controller
      *     security={{"bearerAuth": {}}},
      *     @OA\RequestBody(
      *         required=true,
+     *         description="ID del usuario que desea cerrar sesión",
      *         @OA\JsonContent(
      *             required={"idUsuario"},
-     *             @OA\Property(property="idUsuario", type="integer", description="ID del usuario que desea cerrar sesión.")
+     *             @OA\Property(property="idUsuario", type="integer", example=1, description="ID del usuario que desea cerrar sesión.")
      *         )
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Usuario deslogueado correctamente.",
+     *         description="Usuario deslogueado correctamente",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Usuario deslogueado correctamente.")
      *         )
      *     ),
      *     @OA\Response(
+     *         response=400,
+     *         description="Datos de entrada inválidos",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="El campo idUsuario es requerido.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="No autorizado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No autorizado.")
+     *         )
+     *     ),
+     *     @OA\Response(
      *         response=404,
-     *         description="No se encontró el usuario.",
+     *         description="Usuario no encontrado",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="No se pudo encontrar el usuario.")
@@ -573,54 +740,125 @@ class AuthController extends Controller
      *     ),
      *     @OA\Response(
      *         response=500,
-     *         description="Error al desloguear al usuario.",
+     *         description="Error al desloguear al usuario",
      *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="No se pudo desloguear al usuario.")
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No se pudo desloguear al usuario.")
      *         )
-     *     ),
+     *     )
      * )
      */
-    public function logout(Request $request)
-    {
-        $request->validate([
-            'idUsuario' => 'required|integer',
-        ]);
+   public function logout(Request $request)
+   {
+       // Validar que el ID del usuario esté presente y sea un entero
+       $request->validate([
+           'idUsuario' => 'required|integer',
+       ]);
 
-        $user = Usuario::where('idUsuario', $request->idUsuario)->first();
+       // Buscar el usuario por su ID
+       $user = Usuario::where('idUsuario', $request->idUsuario)->first();
 
-        if ($user) {
-            try {
-                $user->status = 'loggedOff';
-                $user->save();
+       if ($user) {
+           try {
+               // Iniciar transacción
+               DB::beginTransaction();
 
-                return response()->json(['success' => true, 'message' => 'Usuario deslogueado correctamente'], 200);
-            } catch (JWTException $e) {
-                return response()->json(['error' => 'No se pudo desloguear al usuario'], 500);
-            }
-        }
+               // Obtener el token actual de la tabla actividad_usuario
+               $actividad = ActividadUsuario::where('idUsuario', $request->idUsuario)->first();
+               
+               if ($actividad && $actividad->jwt) {
+                   try {
+                       // Configurar el token en JWTAuth
+                       $token = $actividad->jwt;
+                       JWTAuth::setToken($token);
 
-        return response()->json(['success' => false, 'message' => 'No se pudo encontrar el usuario'], 404);
-    }
+                       // Verificar que el token sea válido antes de intentar invalidarlo
+                       if (JWTAuth::check()) {
+                           // Invalidar el token y forzar su expiración
+                           JWTAuth::invalidate(true);
+                       }
+                   } catch (JWTException $e) {
+                       Log::error('Error al invalidar token: ' . $e->getMessage());
+                   } catch (\Exception $e) {
+                       Log::error('Error general con el token: ' . $e->getMessage());
+                   }
+               }
+
+               // Actualizar el estado del usuario a "loggedOff"
+               $user->status = 'loggedOff';
+               $user->save();
+
+               // Limpiar el JWT en la tabla actividad_usuario
+               if ($actividad) {
+                   $actividad->jwt = null;
+                   $actividad->save();
+               }
+
+               // Obtener el nombre completo del usuario
+               $nombreUsuario = $user->nombres . ' ' . $user->apellidos;
+
+               // Definir la acción y mensaje para el log
+               $accion = "$nombreUsuario cerró sesión";
+
+               // Llamada a la función agregarLog para registrar el log
+               $this->agregarLog($user->idUsuario, $accion);
+
+               // Confirmar transacción
+               DB::commit();
+
+               return response()->json([
+                   'success' => true, 
+                   'message' => 'Usuario deslogueado correctamente'
+               ], 200);
+
+           } catch (\Exception $e) {
+               // Revertir transacción en caso de error
+               DB::rollBack();
+
+               return response()->json([
+                   'success' => false, 
+                   'message' => 'No se pudo desloguear al usuario',
+                   'error' => $e->getMessage()
+               ], 500);
+           }
+       }
+
+       return response()->json([
+           'success' => false, 
+           'message' => 'No se pudo encontrar el usuario'
+       ], 404);
+   }
 
 
-    public function refreshToken(Request $request)
-    {
-        try {
-            $oldToken = JWTAuth::getToken();
-
-            Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
-
-            $newToken = JWTAuth::refresh($oldToken);
-
-            Log::info('Token refrescado: Nuevo token', ['newToken' => $newToken]);
-
-            return response()->json(['accessToken' => $newToken], 200);
-        } catch (JWTException $e) {
-            Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
-
-            return response()->json(['error' => 'No se pudo refrescar el token'], 500);
-        }
-    }
+   public function refreshToken(Request $request)
+   {
+       try {
+           $oldToken = JWTAuth::getToken();  // Obtener el token actual
+           
+           Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
+           
+           // Decodificar el token para obtener el payload
+           $decodedToken = JWTAuth::getPayload($oldToken);  // Utilizamos getPayload para obtener el payload
+           $userId = $decodedToken->get('idUsuario');  // Usamos get() para acceder a 'idUsuario'
+           
+           // Refrescar el token
+           $newToken = JWTAuth::refresh($oldToken);
+           
+           // Actualizar el campo jwt en la tabla actividad_usuario
+           $actividadUsuario = ActividadUsuario::updateOrCreate(
+               ['idUsuario' => $userId],  // Si ya existe, se actualizará por el idUsuario
+               ['jwt' => $newToken]  // Actualizar el campo jwt con el nuevo token
+           );
+           
+           Log::info('JWT actualizado en la actividad del usuario', ['userId' => $userId, 'jwt' => $newToken]);
+           
+           return response()->json(['accessToken' => $newToken], 200);
+       } catch (JWTException $e) {
+           Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
+           
+           return response()->json(['error' => 'No se pudo refrescar el token'], 500);
+       }
+   }
 
 
     /**
@@ -738,30 +976,39 @@ class AuthController extends Controller
      */
     public function checkStatus(Request $request)
     {
+        // Validar que el idUsuario esté presente
+        $request->validate([
+            'idUsuario' => 'required|integer',
+        ]);
+
         $idUsuario = $request->input('idUsuario');
-        
-        if (!$idUsuario) {
-            // Sin idUsuario, responde con Bad Request (400)
-            return response()->json(['status' => 'error', 'message' => 'ID de usuario no proporcionado'], 400);
+        $token = $request->bearerToken(); // Obtener el token JWT del encabezado Authorization
+
+        // Buscar el registro de actividad del usuario en la base de datos
+        $actividadUsuario = ActividadUsuario::where('idUsuario', $idUsuario)->first();
+
+        // Si no hay un registro de actividad, devolver un error
+        if (!$actividadUsuario) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Usuario no encontrado'
+            ], 404);
         }
 
-        // Busca el usuario por id
-        $user = Usuario::find($idUsuario);
-
-        // Si el usuario no se encuentra en la BD, responde con Not Found (404)
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'Usuario no encontrado'], 404);
+        // Verificar si el token en la base de datos es diferente al token actual
+        if ($actividadUsuario->jwt !== $token) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'El token no coincide con el almacenado'
+            ], 403);
         }
 
-        // Si el usuario está marcado como 'loggedOff'
-        if ($user->status === 'loggedOff') {
-            return response()->json(['status' => 'error', 'message' => 'Usuario desconectado'], 403);
-        }
-
-        // Si el usuario está activo y encontrado
-        return response()->json(['status' => 'active'], 200);
+        // Si el token es válido, devolver el estado y el token actual
+        return response()->json([
+            'status' => 'success',
+            'token' => $actividadUsuario->jwt  // Devuelves el token almacenado en la base de datos
+        ]);
     }
-
 
     /**
      * @OA\Post(
@@ -992,4 +1239,26 @@ class AuthController extends Controller
         ], 404);
     }
 
+    
+    // Función para agregar un log directamente desde el backend
+    public function agregarLog($usuarioId, $accion)
+    {
+        // Obtener el usuario por id
+        $usuario = Usuario::find($usuarioId);
+
+        if ($usuario) {
+            // Crear el log
+            $log = LogUser::create([
+                'idUsuario' => $usuario->idUsuario,
+                'nombreUsuario' => $usuario->nombres . ' ' . $usuario->apellidos,
+                'rol' => $usuario->rol,
+                'accion' => $accion,
+                'fecha' => now(),
+            ]);
+
+            return response()->json(['message' => 'Log agregado correctamente', 'log' => $log], 200);
+        }
+
+        return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
 }

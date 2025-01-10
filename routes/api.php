@@ -36,6 +36,8 @@ use App\Http\Controllers\SuperAdminController;
 
         Route::get('/listarCategorias', [ClienteController::class, 'listarCategorias']);
 
+        Route::get('/ofertas/activa', [ClienteController::class, 'obtenerOfertaActiva']);
+
         // Ruta para verificar el token de correo
         Route::post('verificar-token', [AuthController::class, 'verificarCorreo']);
         

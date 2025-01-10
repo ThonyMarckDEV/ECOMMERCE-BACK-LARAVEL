@@ -28,6 +28,7 @@ use App\Mail\NotificacionDireccionPredeterminada;
 use App\Mail\CodigoVerificacion;
 use App\Models\Categoria;
 use App\Models\DetalleDireccionPedido;
+use App\Models\Oferta;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
@@ -2014,6 +2015,25 @@ class ClienteController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function obtenerOfertaActiva()
+    {
+        $ofertaActiva = Oferta::where('estado', 1)
+            ->where('fechaInicio', '<=', now())
+            ->where('fechaFin', '>=', now())
+            ->first();
+
+        if ($ofertaActiva) {
+            return response()->json([
+                'success' => true,
+                'data' => $ofertaActiva,
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay ofertas activas',
+            ]);
+        }
+    }
 
     public function verificarCodigo(Request $request, $idUsuario)
     {
