@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Usuario;
+use App\Models\Log as LogUser;
 use Illuminate\Http\Request;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -827,27 +828,38 @@ class AuthController extends Controller
        ], 404);
    }
 
+   public function refreshToken(Request $request)
+   {
+       try {
+           $oldToken = JWTAuth::getToken();  // Obtener el token actual
+           
+           Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
+           
+           // Decodificar el token para obtener el payload
+           $decodedToken = JWTAuth::getPayload($oldToken);  // Utilizamos getPayload para obtener el payload
+           $userId = $decodedToken->get('idUsuario');  // Usamos get() para acceder a 'idUsuario'
+           
+           // Refrescar el token
+           $newToken = JWTAuth::refresh($oldToken);
+           
+           // Actualizar el campo jwt en la tabla actividad_usuario
+           $actividadUsuario = ActividadUsuario::updateOrCreate(
+               ['idUsuario' => $userId],  // Si ya existe, se actualizará por el idUsuario
+               ['jwt' => $newToken]  // Actualizar el campo jwt con el nuevo token
+           );
+           
+           Log::info('JWT actualizado en la actividad del usuario', ['userId' => $userId, 'jwt' => $newToken]);
+           
+           return response()->json(['accessToken' => $newToken], 200);
+       } catch (JWTException $e) {
+           Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
+           
+           return response()->json(['error' => 'No se pudo refrescar el token'], 500);
+       }
+   }
 
-    public function refreshToken(Request $request)
-    {
-        try {
-            $oldToken = JWTAuth::getToken();
 
-            Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
-
-            $newToken = JWTAuth::refresh($oldToken);
-
-            Log::info('Token refrescado: Nuevo token', ['newToken' => $newToken]);
-
-            return response()->json(['accessToken' => $newToken], 200);
-        } catch (JWTException $e) {
-            Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
-
-            return response()->json(['error' => 'No se pudo refrescar el token'], 500);
-        }
-    }
-
-
+ 
     /**
      * @OA\Post(
      *     path="/api/update-activity",
@@ -909,7 +921,6 @@ class AuthController extends Controller
         return response()->json(['message' => 'Last activity updated'], 200);
     }
 
-
     /**
      * @OA\Post(
      *     path="/api/check-status",
@@ -963,28 +974,38 @@ class AuthController extends Controller
      */
     public function checkStatus(Request $request)
     {
+        // Validar que el idUsuario esté presente
+        $request->validate([
+            'idUsuario' => 'required|integer',
+        ]);
+
         $idUsuario = $request->input('idUsuario');
-        
-        if (!$idUsuario) {
-            // Sin idUsuario, responde con Bad Request (400)
-            return response()->json(['status' => 'error', 'message' => 'ID de usuario no proporcionado'], 400);
+        $token = $request->bearerToken(); // Obtener el token JWT del encabezado Authorization
+
+        // Buscar el registro de actividad del usuario en la base de datos
+        $actividadUsuario = ActividadUsuario::where('idUsuario', $idUsuario)->first();
+
+        // Si no hay un registro de actividad, devolver un error
+        if (!$actividadUsuario) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Usuario no encontrado'
+            ], 404);
         }
 
-        // Busca el usuario por id
-        $user = Usuario::find($idUsuario);
-
-        // Si el usuario no se encuentra en la BD, responde con Not Found (404)
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'Usuario no encontrado'], 404);
+        // Verificar si el token en la base de datos es diferente al token actual
+        if ($actividadUsuario->jwt !== $token) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'El token no coincide con el almacenado'
+            ], 403);
         }
 
-        // Si el usuario está marcado como 'loggedOff'
-        if ($user->status === 'loggedOff') {
-            return response()->json(['status' => 'error', 'message' => 'Usuario desconectado'], 403);
-        }
-
-        // Si el usuario está activo y encontrado
-        return response()->json(['status' => 'active'], 200);
+        // Si el token es válido, devolver el estado y el token actual
+        return response()->json([
+            'status' => 'success',
+            'token' => $actividadUsuario->jwt  // Devuelves el token almacenado en la base de datos
+        ]);
     }
 
 
@@ -1216,5 +1237,27 @@ class AuthController extends Controller
             'mensaje' => 'No se pudo obtener el estado de mantenimiento'
         ], 404);
     }
+
+       // Función para agregar un log directamente desde el backend
+       public function agregarLog($usuarioId, $accion)
+       {
+           // Obtener el usuario por id
+           $usuario = Usuario::find($usuarioId);
+   
+           if ($usuario) {
+               // Crear el log
+               $log = LogUser::create([
+                   'idUsuario' => $usuario->idUsuario,
+                   'nombreUsuario' => $usuario->nombres . ' ' . $usuario->apellidos,
+                   'rol' => $usuario->rol,
+                   'accion' => $accion,
+                   'fecha' => now(),
+               ]);
+   
+               return response()->json(['message' => 'Log agregado correctamente', 'log' => $log], 200);
+           }
+   
+           return response()->json(['message' => 'Usuario no encontrado'], 404);
+       }
 
 }
