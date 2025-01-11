@@ -516,7 +516,8 @@ class SuperAdminController extends Controller
                 'idCategoria' => 'required|exists:categorias,idCategoria',
                 'modelos' => 'required|array',
                 'modelos.*.nombreModelo' => 'required',
-                'modelos.*.imagen' => [
+                'modelos.*.imagenes' => 'required|array',
+                'modelos.*.imagenes.*' => [
                     'required',
                     'file',
                     'mimes:jpeg,jpg,png,avif,webp', // Formatos permitidos
@@ -551,35 +552,36 @@ class SuperAdminController extends Controller
                 ]);
                 Log::info('Modelo creado:', ['id' => $modelo->idModelo]);
 
-                // Procesar la imagen del modelo
-                if (isset($modeloData['imagen'])) {
-                    Log::info('Procesando imagen del modelo');
-                    $imagen = $modeloData['imagen'];
-                    $nombreProducto = $producto->nombreProducto;
-                    $nombreModelo = $modelo->nombreModelo;
+                // Procesar las imágenes del modelo
+                if (isset($modeloData['imagenes'])) {
+                    Log::info('Procesando imágenes del modelo');
+                    foreach ($modeloData['imagenes'] as $imagen) {
+                        $nombreProducto = $producto->nombreProducto;
+                        $nombreModelo = $modelo->nombreModelo;
 
-                    $rutaImagen = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo . '/' . $imagen->getClientOriginalName();
+                        $rutaImagen = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo . '/' . $imagen->getClientOriginalName();
 
-                    // Crear directorio si no existe
-                    if (!Storage::disk('public')->exists('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo)) {
-                        Log::info('Creando directorio para la imagen');
-                        Storage::disk('public')->makeDirectory('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo);
+                        // Crear directorio si no existe
+                        if (!Storage::disk('public')->exists('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo)) {
+                            Log::info('Creando directorio para la imagen');
+                            Storage::disk('public')->makeDirectory('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo);
+                        }
+
+                        Storage::disk('public')->putFileAs(
+                            'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo,
+                            $imagen,
+                            $imagen->getClientOriginalName()
+                        );
+
+                        $rutaImagenBD = str_replace('public/', '', $rutaImagen);
+
+                        ImagenModelo::create([
+                            'idModelo' => $modelo->idModelo,
+                            'urlImagen' => $rutaImagenBD,
+                            'descripcion' => 'Imagen del modelo ' . $nombreModelo,
+                        ]);
+                        Log::info('Imagen procesada y guardada');
                     }
-
-                    Storage::disk('public')->putFileAs(
-                        'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo,
-                        $imagen,
-                        $imagen->getClientOriginalName()
-                    );
-
-                    $rutaImagenBD = str_replace('public/', '', $rutaImagen);
-
-                    ImagenModelo::create([
-                        'idModelo' => $modelo->idModelo,
-                        'urlImagen' => $rutaImagenBD,
-                        'descripcion' => 'Imagen del modelo ' . $nombreModelo,
-                    ]);
-                    Log::info('Imagen procesada y guardada');
                 }
 
                 // Manejar el stock para cada talla del modelo
