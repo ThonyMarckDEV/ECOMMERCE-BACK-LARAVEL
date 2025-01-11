@@ -18,21 +18,21 @@ class Modelo extends Model
 
     protected $fillable = [
         'nombreModelo',
-        'descripcion',
-        'idProducto', // Clave foránea hacia productos
+        'idProducto',
+        'urlModelo'
     ];
 
     // Relación de muchos a uno hacia Producto
-    public function producto()
-    {
-        return $this->belongsTo(Producto::class, 'idProducto', 'idProducto');
-    }
-
-    // Relación de uno a muchos hacia ImagenModelo
-    public function imagenes()
-    {
-        return $this->hasMany(ImagenModelo::class, 'idModelo', 'idModelo');
-    }
+     public function producto()
+     {
+         return $this->belongsTo(Producto::class, 'idProducto', 'idProducto');
+     }
+ 
+     // Relación de uno a muchos hacia ImagenModelo
+     public function imagenes()
+     {
+         return $this->hasMany(ImagenModelo::class, 'idModelo', 'idModelo');
+     }
 
     // Relación con el stock
     public function stock()

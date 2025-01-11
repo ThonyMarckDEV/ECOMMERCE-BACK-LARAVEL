@@ -52,6 +52,7 @@ use App\Http\Controllers\SuperAdminController;
 
     Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
 
+
         Route::post('refresh-token', [AuthController::class, 'refreshToken']);
 
         Route::post('logout', [AuthController::class, 'logout']);
@@ -59,6 +60,25 @@ use App\Http\Controllers\SuperAdminController;
         Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
 
         Route::post('/check-status', [AuthController::class, 'checkStatus']);
+
+        
+        Route::get('/categoriasproductos', [SuperAdminController::class, 'listarCategoriasproductos']);
+        Route::post('/agregarProductos', [SuperAdminController::class, 'agregarProducto']);
+
+        Route::get('/tallas', [SuperAdminController::class, 'listarTallasAdmin']);
+        Route::get('/listarStockPorModelo/{idModelo}', [SuperAdminController::class, 'listarStockPorModelo']);
+        Route::post('/agregarStock', [SuperAdminController::class, 'agregarStock']);
+        Route::put('/actualizarStock/{idStock}', [SuperAdminController::class, 'actualizarStock']);
+        Route::delete('/eliminarStock/{idStock}', [SuperAdminController::class, 'eliminarStock']);
+
+        Route::post('/editarModeloyImagen/{id}', [SuperAdminController::class, 'editarModeloyImagen']);
+        Route::delete('/eliminarImagenModelo/{id}', [SuperAdminController::class, 'eliminarImagenModelo']);
+        Route::get('/listarProductos', [SuperAdminController::class, 'listarProductos']);
+        Route::put('/actualizarProducto/{id}', [SuperAdminController::class, 'actualizarProducto']);
+        Route::put('/cambiarEstadoProducto/{id}',[SuperAdminController::class, 'cambiarEstadoProducto']);
+        Route::post('/agregarModelo', [SuperAdminController::class, 'agregarModelo']);
+        Route::delete('/EliminarModelo/{idModelo}', [SuperAdminController::class, 'EliminarModelo']);
+
 
     });
 
