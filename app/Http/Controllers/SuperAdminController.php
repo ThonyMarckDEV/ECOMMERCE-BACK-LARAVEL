@@ -501,139 +501,70 @@ class SuperAdminController extends Controller
      *     )
      * )
      */
-    // public function agregarProducto(Request $request)
-    // {
-    //     $request->validate([
-    //         'nombreProducto' => 'required',
-    //         'descripcion' => 'nullable', // Descripción opcional
-    //         'estado' => 'required',
-    //         'idCategoria' => 'required|exists:categorias,idCategoria',
-    //         'modelos' => 'required|array', // Asegúrate de que se envíe un array de modelos
-    //         'modelos.*.nombreModelo' => 'required', // Nombre del modelo obligatorio
-    //         'modelos.*.imagen' => 'required|image', // Imagen del modelo obligatoria
-    //     ]);
-
-    //     try {
-    //         DB::beginTransaction();
-
-    //         // Crear el producto
-    //         $producto = Producto::create([
-    //             'nombreProducto' => $request->nombreProducto,
-    //             'descripcion' => $request->descripcion,
-    //             'estado' => $request->estado,
-    //             'idCategoria' => $request->idCategoria
-    //         ]);
-
-    //         // Crear los modelos
-    //         foreach ($request->modelos as $modeloData) {
-    //             $modelo = Modelo::create([
-    //                 'idProducto' => $producto->idProducto,
-    //                 'nombreModelo' => $modeloData['nombreModelo'],
-    //                 'urlModelo' => null
-    //             ]);
-
-    //             // Procesar la imagen de cada modelo
-    //             if (isset($modeloData['imagen'])) {
-    //                 $imagen = $modeloData['imagen'];
-    //                 $nombreProducto = $producto->nombreProducto;
-    //                 $nombreModelo = $modelo->nombreModelo;
-
-    //                 // Ruta para guardar la imagen
-    //                 $rutaImagen = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo . '/' . $imagen->getClientOriginalName();
-
-    //                 // Guardar en el disco 'public'
-    //                 Storage::disk('public')->putFileAs(
-    //                     'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo,
-    //                     $imagen,
-    //                     $imagen->getClientOriginalName()
-    //                 );
-
-    //                 // Guardar solo la ruta relativa
-    //                 $rutaImagenBD = str_replace('public/', '', $rutaImagen);
-
-    //                 // Crear la imagen del modelo
-    //                 ImagenModelo::create([
-    //                     'idModelo' => $modelo->idModelo,
-    //                     'urlImagen' => $rutaImagenBD,
-    //                     'descripcion' => 'Imagen del modelo ' . $nombreModelo
-    //                 ]);
-    //             }
-    //         }
-
-    //         DB::commit();
-
-    //         // Obtener el ID del usuario autenticado
-    //         $usuarioId = auth()->id();
-
-    //         // Obtener el nombre completo del usuario autenticado
-    //         $usuario = Usuario::find($usuarioId);
-    //         $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
-
-    //         // Definir la acción y mensaje para el log
-    //         $accion = "$nombreUsuario agregó el producto: $producto->nombreProducto";
-
-    //         // Llamada a la función agregarLog para registrar el log
-    //         $this->agregarLog($usuarioId, $accion);
-
-    //         return response()->json([
-    //             'message' => 'Producto agregado correctamente',
-    //             'producto' => $producto
-    //         ], 201);
-
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-
-    //         // Imprime el error en los logs
-    //         Log::error('Error al agregar el producto: ' . $e->getMessage());
-
-    //         return response()->json([
-    //             'message' => 'Error al agregar el producto',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
     public function agregarProducto(Request $request)
     {
-        $request->validate([
-            'nombreProducto' => 'required',
-            'descripcion' => 'nullable',
-            'estado' => 'required',
-            'precio'=> 'required',
-            'idCategoria' => 'required|exists:categorias,idCategoria',
-            'modelos' => 'required|array',
-            'modelos.*.nombreModelo' => 'required',
-            'modelos.*.imagen' => 'required|image',
-            'modelos.*.tallas' => 'array', // Validate tallas array for each model
-        ]);
+        Log::info('Iniciando proceso de agregar producto'); // Log de inicio
 
         try {
-            DB::beginTransaction();
+            // Validar el request
+            Log::info('Validando request');
+            $request->validate([
+                'nombreProducto' => 'required',
+                'descripcion' => 'nullable',
+                'estado' => 'required',
+                'precio' => 'required',
+                'idCategoria' => 'required|exists:categorias,idCategoria',
+                'modelos' => 'required|array',
+                'modelos.*.nombreModelo' => 'required',
+                'modelos.*.imagen' => [
+                    'required',
+                    'file',
+                    'mimes:jpeg,jpg,png,avif,webp', // Formatos permitidos
+                    'max:5120', // Tamaño máximo de 5 MB
+                ],
+                'modelos.*.tallas' => 'array',
+            ]);
 
-            // Create product
+            Log::info('Request validado correctamente');
+
+            DB::beginTransaction();
+            Log::info('Iniciando transacción de base de datos');
+
+            // Crear el producto
+            Log::info('Creando producto');
             $producto = Producto::create([
                 'nombreProducto' => $request->nombreProducto,
                 'descripcion' => $request->descripcion,
                 'precio' => $request->precio,
                 'estado' => $request->estado,
-                'idCategoria' => $request->idCategoria
+                'idCategoria' => $request->idCategoria,
             ]);
+            Log::info('Producto creado:', ['id' => $producto->idProducto]);
 
-            // Create models and handle their stock
+            // Crear modelos y manejar su stock
             foreach ($request->modelos as $modeloData) {
+                Log::info('Creando modelo');
                 $modelo = Modelo::create([
                     'idProducto' => $producto->idProducto,
                     'nombreModelo' => $modeloData['nombreModelo'],
-                    'urlModelo' => null
+                    'urlModelo' => null,
                 ]);
+                Log::info('Modelo creado:', ['id' => $modelo->idModelo]);
 
-                // Process image for each model
+                // Procesar la imagen del modelo
                 if (isset($modeloData['imagen'])) {
+                    Log::info('Procesando imagen del modelo');
                     $imagen = $modeloData['imagen'];
                     $nombreProducto = $producto->nombreProducto;
                     $nombreModelo = $modelo->nombreModelo;
 
                     $rutaImagen = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo . '/' . $imagen->getClientOriginalName();
+
+                    // Crear directorio si no existe
+                    if (!Storage::disk('public')->exists('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo)) {
+                        Log::info('Creando directorio para la imagen');
+                        Storage::disk('public')->makeDirectory('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo);
+                    }
 
                     Storage::disk('public')->putFileAs(
                         'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo,
@@ -646,94 +577,143 @@ class SuperAdminController extends Controller
                     ImagenModelo::create([
                         'idModelo' => $modelo->idModelo,
                         'urlImagen' => $rutaImagenBD,
-                        'descripcion' => 'Imagen del modelo ' . $nombreModelo
+                        'descripcion' => 'Imagen del modelo ' . $nombreModelo,
                     ]);
+                    Log::info('Imagen procesada y guardada');
                 }
 
-                // Handle stock for each size of the model
+                // Manejar el stock para cada talla del modelo
                 if (isset($modeloData['tallas']) && is_array($modeloData['tallas'])) {
+                    Log::info('Procesando tallas del modelo');
                     foreach ($modeloData['tallas'] as $idTalla => $cantidad) {
-                        // Only create stock entry if cantidad is greater than 0
                         if ($cantidad > 0) {
                             Stock::create([
                                 'idModelo' => $modelo->idModelo,
                                 'idTalla' => $idTalla,
-                                'cantidad' => $cantidad
+                                'cantidad' => $cantidad,
                             ]);
+                            Log::info('Stock creado para talla:', ['idTalla' => $idTalla, 'cantidad' => $cantidad]);
                         }
                     }
                 }
             }
 
             DB::commit();
+            Log::info('Transacción completada correctamente');
 
-            // Log the action
+            // Registrar la acción en el log
             $usuarioId = auth()->id();
             $usuario = Usuario::find($usuarioId);
             $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
             $accion = "$nombreUsuario agregó el producto: $producto->nombreProducto";
             $this->agregarLog($usuarioId, $accion);
 
+            Log::info('Producto agregado correctamente');
+
             return response()->json([
                 'message' => 'Producto agregado correctamente',
-                'producto' => $producto
+                'producto' => $producto,
             ], 201);
-
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            Log::error('Error de validación:', ['errors' => $e->errors()]);
+        
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al agregar el producto: ' . $e->getMessage());
-
+            Log::error('Trace del error:', ['trace' => $e->getTraceAsString()]);
+        
             return response()->json([
                 'message' => 'Error al agregar el producto',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-        // Actualizar un producto
-        public function actualizarProducto(Request $request, $id)
-        {
-            // Validación de los datos entrantes, incluyendo los tipos de archivo de imagen
-            $request->validate([
-                'nombreProducto' => 'required|string|max:255',
-                'descripcion' => 'nullable|string',
-                'precio' => 'required|numeric',
-                'stock' => 'required|integer',
-                'imagen' => 'nullable|mimes:jpeg,jpg,png,gif|max:2048', // Solo formatos de imagen permitidos
-                'idCategoria' => 'required|exists:categorias,idCategoria',
-            ]);
+    /**
+     * @OA\Put(
+     *     path="/api/actualizarProducto/{idProducto}",
+     *     tags={"SUPERADMIN CONTROLLER"},
+     *     summary="Actualizar un producto existente",
+     *     description="Permite a un superadministrador actualizar los datos de un producto existente, incluyendo su nombre y descripción. Además, registra la acción en el log del sistema.",
+     *     operationId="actualizarProducto",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="idProducto",
+     *         in="path",
+     *         required=true,
+     *         description="ID del producto que se desea actualizar",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Datos del producto que se desean actualizar",
+     *         @OA\JsonContent(
+     *             required={"nombreProducto"},
+     *             @OA\Property(property="nombreProducto", type="string", example="Producto Actualizado"),
+     *             @OA\Property(property="descripcion", type="string", nullable=true, example="Descripción actualizada")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Producto actualizado correctamente",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Producto actualizado correctamente")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Producto no encontrado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Producto no encontrado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="No autorizado",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="No autorizado")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Error interno del servidor",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Error al actualizar el producto"),
+     *             @OA\Property(property="error", type="string", example="Mensaje de error detallado")
+     *         )
+     *     )
+     * )
+     */
+    public function actualizarProducto(Request $request, $idProducto)
+    {
+        $producto = Producto::find($idProducto);
 
-            // Buscar el producto por ID
-            $producto = Producto::findOrFail($id);
-
-            // Procesar la nueva imagen si se proporciona
-            if ($request->hasFile('imagen')) {
-                // Eliminar la imagen anterior si existe
-                if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
-                    Storage::disk('public')->delete($producto->imagen);
-                }
-
-                // Guardar la nueva imagen y actualizar la ruta en el producto
-                $path = $request->file('imagen')->store('imagenes', 'public');
-                $producto->imagen = $path;
-            }
-
-            // Actualizar otros campos del producto
-            $producto->nombreProducto = $request->nombreProducto;
-            $producto->descripcion = $request->descripcion;
-            $producto->precio = $request->precio;
-            $producto->stock = $request->stock;
-            $producto->idCategoria = $request->idCategoria;
-            
-            // Guardar los cambios
-            $producto->save();
-
-            return response()->json([
-                'success' => true, 
-                'message' => 'Producto actualizado exitosamente', 
-                'data' => $producto
-            ], 200);
+        if (!$producto) {
+            return response()->json(['error' => 'Producto no encontrado'], 404);
         }
+
+        // Obtener el nombre del producto antes de la actualización
+        $nombreProductoAntiguo = $producto->nombreProducto;
+
+        // Actualizar los datos del producto
+        $producto->nombreProducto = $request->nombreProducto;
+        $producto->descripcion = $request->descripcion;
+        $producto->save();
+
+        // Registrar la acción de actualización del producto en el log
+        $usuarioId = auth()->id(); // Obtener el ID del usuario autenticado
+        $usuario = Usuario::find($usuarioId);
+        $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
+        $accion = "$nombreUsuario actualizó el producto: $nombreProductoAntiguo a {$producto->nombreProducto}";
+        $this->agregarLog($usuarioId, $accion);
+
+        return response()->json(['message' => 'Producto actualizado correctamente']);
+    }
 
 
     /**
