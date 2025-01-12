@@ -501,11 +501,158 @@ class SuperAdminController extends Controller
      *     )
      * )
      */
+    // public function agregarProducto(Request $request)
+    // {
+    //     Log::info('Iniciando proceso de agregar producto'); // Log de inicio
+
+    //     try {
+    //         // Validar el request
+    //         Log::info('Validando request');
+    //         $request->validate([
+    //             'nombreProducto' => 'required',
+    //             'descripcion' => 'nullable',
+    //             'estado' => 'required',
+    //             'precio' => 'required',
+    //             'idCategoria' => 'required|exists:categorias,idCategoria',
+    //             'modelos' => 'required|array',
+    //             'modelos.*.nombreModelo' => 'required',
+    //             'modelos.*.imagenes' => 'required|array',
+    //             'modelos.*.imagenes.*' => [
+    //                 'required',
+    //                 'file',
+    //                 'mimes:jpeg,jpg,png,avif,webp', // Formatos permitidos
+    //                 'max:5120', // Tamaño máximo de 5 MB
+    //             ],
+    //             'modelos.*.tallas' => 'array',
+    //         ]);
+
+    //         Log::info('Request validado correctamente');
+
+    //         DB::beginTransaction();
+    //         Log::info('Iniciando transacción de base de datos');
+
+    //         // Crear el producto
+    //         Log::info('Creando producto');
+    //         $producto = Producto::create([
+    //             'nombreProducto' => $request->nombreProducto,
+    //             'descripcion' => $request->descripcion,
+    //             'precio' => $request->precio,
+    //             'estado' => $request->estado,
+    //             'idCategoria' => $request->idCategoria,
+    //         ]);
+    //         Log::info('Producto creado:', ['id' => $producto->idProducto]);
+
+    //         // Crear modelos y manejar su stock
+    //         foreach ($request->modelos as $modeloData) {
+    //             Log::info('Creando modelo');
+    //             $modelo = Modelo::create([
+    //                 'idProducto' => $producto->idProducto,
+    //                 'nombreModelo' => $modeloData['nombreModelo'],
+    //                 'urlModelo' => null,
+    //             ]);
+    //             Log::info('Modelo creado:', ['id' => $modelo->idModelo]);
+
+    //             // Procesar las imágenes del modelo
+    //             if (isset($modeloData['imagenes'])) {
+    //                 Log::info('Procesando imágenes del modelo');
+    //                 foreach ($modeloData['imagenes'] as $imagen) {
+    //                     $nombreProducto = $producto->nombreProducto;
+    //                     $nombreModelo = $modelo->nombreModelo;
+
+    //                     $rutaImagen = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo . '/' . $imagen->getClientOriginalName();
+
+    //                     // Crear directorio si no existe
+    //                     if (!Storage::disk('public')->exists('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo)) {
+    //                         Log::info('Creando directorio para la imagen');
+    //                         Storage::disk('public')->makeDirectory('imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo);
+    //                     }
+
+    //                     Storage::disk('public')->putFileAs(
+    //                         'imagenes/productos/' . $nombreProducto . '/modelos/' . $nombreModelo,
+    //                         $imagen,
+    //                         $imagen->getClientOriginalName()
+    //                     );
+
+    //                     $rutaImagenBD = str_replace('public/', '', $rutaImagen);
+
+    //                     ImagenModelo::create([
+    //                         'idModelo' => $modelo->idModelo,
+    //                         'urlImagen' => $rutaImagenBD,
+    //                         'descripcion' => 'Imagen del modelo ' . $nombreModelo,
+    //                     ]);
+    //                     Log::info('Imagen procesada y guardada');
+    //                 }
+    //             }
+
+    //             // Manejar el stock para cada talla del modelo
+    //             if (isset($modeloData['tallas']) && is_array($modeloData['tallas'])) {
+    //                 Log::info('Procesando tallas del modelo');
+    //                 foreach ($modeloData['tallas'] as $idTalla => $cantidad) {
+    //                     if ($cantidad > 0) {
+    //                         Stock::create([
+    //                             'idModelo' => $modelo->idModelo,
+    //                             'idTalla' => $idTalla,
+    //                             'cantidad' => $cantidad,
+    //                         ]);
+    //                         Log::info('Stock creado para talla:', ['idTalla' => $idTalla, 'cantidad' => $cantidad]);
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         DB::commit();
+    //         Log::info('Transacción completada correctamente');
+
+    //         // Registrar la acción en el log
+    //         $usuarioId = auth()->id();
+    //         $usuario = Usuario::find($usuarioId);
+    //         $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
+    //         $accion = "$nombreUsuario agregó el producto: $producto->nombreProducto";
+    //         $this->agregarLog($usuarioId, $accion);
+
+    //         Log::info('Producto agregado correctamente');
+
+    //         return response()->json([
+    //             'message' => 'Producto agregado correctamente',
+    //             'producto' => $producto,
+    //         ], 201);
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         DB::rollBack();
+    //         Log::error('Error de validación:', ['errors' => $e->errors()]);
+        
+    //         return response()->json([
+    //             'message' => 'Error de validación',
+    //             'errors' => $e->errors(),
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error al agregar el producto: ' . $e->getMessage());
+    //         Log::error('Trace del error:', ['trace' => $e->getTraceAsString()]);
+        
+    //         return response()->json([
+    //             'message' => 'Error al agregar el producto',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function agregarProducto(Request $request)
     {
         Log::info('Iniciando proceso de agregar producto'); // Log de inicio
 
         try {
+            // Verificar si ya existe un producto con el mismo nombre
+            Log::info('Verificando si el producto ya existe');
+            $productoExistente = Producto::where('nombreProducto', $request->nombreProducto)->first();
+
+            if ($productoExistente) {
+                Log::warning('Producto con el mismo nombre ya existe:', ['id' => $productoExistente->idProducto]);
+                return response()->json([
+                    'message' => 'Error: Ya existe un producto con el mismo nombre.',
+                    'productoExistente' => $productoExistente,
+                ], 409); // 409 Conflict es un código HTTP adecuado para este caso
+            }
+
             // Validar el request
             Log::info('Validando request');
             $request->validate([
@@ -619,7 +766,7 @@ class SuperAdminController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             Log::error('Error de validación:', ['errors' => $e->errors()]);
-        
+
             return response()->json([
                 'message' => 'Error de validación',
                 'errors' => $e->errors(),
@@ -628,7 +775,7 @@ class SuperAdminController extends Controller
             DB::rollBack();
             Log::error('Error al agregar el producto: ' . $e->getMessage());
             Log::error('Trace del error:', ['trace' => $e->getTraceAsString()]);
-        
+
             return response()->json([
                 'message' => 'Error al agregar el producto',
                 'error' => $e->getMessage(),
