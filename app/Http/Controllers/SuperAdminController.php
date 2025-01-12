@@ -268,19 +268,37 @@ class SuperAdminController extends Controller
         ]);
     }
  
-     // Agregar una nueva talla
-     public function agregarTalla(Request $request)
-     {
-         $request->validate([
-             'nombreTalla' => 'required|string|unique:tallas',
-         ]);
- 
-         $talla = Talla::create([
-             'nombreTalla' => $request->nombreTalla,
-         ]);
- 
-         return response()->json(['message' => 'Talla agregada exitosamente', 'data' => $talla], 201);
-     }
+    public function agregarTalla(Request $request)
+    {
+        try {
+            // Validar los datos de entrada
+            $request->validate([
+                'nombreTalla' => 'required|string|unique:tallas',
+            ]);
+    
+            // Crear la talla en la base de datos
+            $talla = Talla::create([
+                'nombreTalla' => $request->nombreTalla,
+            ]);
+    
+            return response()->json([
+                'message' => 'Talla agregada exitosamente',
+                'data' => $talla,
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Capturar el error de validación (nombre de talla duplicado)
+            return response()->json([
+                'message' => 'Error: Ya existe una talla con el mismo nombre.',
+                'errors' => $e->errors(),
+            ], 409); // 409 Conflict
+        } catch (\Exception $e) {
+            // Capturar otros errores
+            return response()->json([
+                'message' => 'Error al agregar la talla',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     // Editar una talla existente
     public function editarTalla(Request $request, $id)
