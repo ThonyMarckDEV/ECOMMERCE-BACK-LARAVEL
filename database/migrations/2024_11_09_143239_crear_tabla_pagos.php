@@ -15,6 +15,7 @@ class CrearTablaPagos extends Migration
             $table->decimal('monto', 10, 2);
             $table->string('metodo_pago', 255)->nullable();
             $table->enum('estado_pago', ['pendiente', 'completado'])->default('pendiente');
+            $table->string('comprobante_url', 255)->nullable();
             $table->timestamp('fecha_pago')->nullable()->default(DB::raw('CURRENT_TIMESTAMP')); // Fecha de pago por defecto NOW()
 
             // Clave foránea

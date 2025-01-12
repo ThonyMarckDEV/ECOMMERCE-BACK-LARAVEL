@@ -136,7 +136,7 @@
         <p>Gracias por su compra. A continuación, encontrará los detalles de su pedido:</p>
 
         <div class="order-info">
-            <span class="highlight">Nº de Pedido:</span> #{{ rand(10000, 99999) }}<br>
+            <span class="highlight">Nº de Pedido:</span> #{{ $idPedido }}<br>
             <span class="highlight">Fecha:</span> {{ date('d/m/Y') }}
         </div>
 

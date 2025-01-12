@@ -198,6 +198,9 @@ use App\Http\Controllers\SuperAdminController;
 
         Route::get('/productos-mas-comprados', [ClienteController::class, 'getProductosMasComprados']);
  
+        Route::get('/tipo-pago', [ClienteController::class, 'getTipoPago']);
+
+        Route::post('/recibirPagoComprobante', [PaymentController::class, 'recibirPagoComprobante']);
     });
 
 

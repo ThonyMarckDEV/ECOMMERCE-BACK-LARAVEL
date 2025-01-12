@@ -135,7 +135,7 @@
 
         <div class="order-info">
             <span class="highlight">RUC:</span> {{ $ruc }}<br>
-            <span class="highlight">Nº de Factura:</span> F001-{{ rand(100000, 999999) }}<br>
+            <span class="highlight">Nº de Factura:</span> #{{ $idPedido }}<br>
             <span class="highlight">Fecha:</span> {{ date('d/m/Y') }}
         </div>
 

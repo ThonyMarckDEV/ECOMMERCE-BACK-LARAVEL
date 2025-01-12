@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TipoPago;
 use App\Models\Usuario;
 use App\Models\Carrito;
 use App\Models\CarritoDetalle;
@@ -2138,6 +2139,26 @@ class ClienteController extends Controller
 
         // Devolver las categorías como JSON con un mensaje de éxito
         return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
+    public function getTipoPago(Request $request)
+    {
+        // Verificar el token de autenticación
+        if (!$request->user()) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
+        }
+
+        // Obtener el tipo de pago activo
+        $tipoPago = TipoPago::where('status', 1)->first();
+
+        if (!$tipoPago) {
+            return response()->json(['success' => false, 'message' => 'No se encontró un tipo de pago activo'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'tipo_pago' => $tipoPago->nombre,
+        ]);
     }
 
 

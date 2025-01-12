@@ -13,15 +13,16 @@ class NotificacionPagoCompletadoBoleta extends Mailable
     public $nombreCompleto;
     public $detallesPedido;
     public $total;
-
     public $pdfPath;
+    public $idPedido;  // Added idPedido property
 
-    public function __construct($nombreCompleto, $detallesPedido, $total,$pdfPath)
+    public function __construct($nombreCompleto, $detallesPedido, $total, $pdfPath, $idPedido)  // Added idPedido parameter
     {
         $this->nombreCompleto = $nombreCompleto;
         $this->detallesPedido = $detallesPedido;
         $this->total = $total;
         $this->pdfPath = $pdfPath;
+        $this->idPedido = $idPedido;  // Store idPedido
     }
 
     public function build()

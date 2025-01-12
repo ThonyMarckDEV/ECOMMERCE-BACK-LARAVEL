@@ -16,13 +16,16 @@ class NotificacionPagoCompletadoFactura extends Mailable
     public $pdfPath;
     public $ruc;  // Added RUC field
 
-    public function __construct($nombreCompleto, $detallesPedido, $total, $pdfPath, $ruc)  // Added $ruc parameter
+    public $idPedido;  // Added idPedido property
+
+    public function __construct($nombreCompleto, $detallesPedido, $total, $pdfPath, $ruc, $idPedido)  // Added $ruc parameter
     {
         $this->nombreCompleto = $nombreCompleto;
         $this->detallesPedido = $detallesPedido;
         $this->total = $total;
         $this->pdfPath = $pdfPath;
         $this->ruc = $ruc;  // Assign RUC
+        $this->idPedido = $idPedido;  // Store idPedido
     }
 
     public function build()
