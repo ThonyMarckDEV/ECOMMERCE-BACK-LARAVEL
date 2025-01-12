@@ -2160,7 +2160,34 @@ class ClienteController extends Controller
             'tipo_pago' => $tipoPago->nombre,
         ]);
     }
-
+    public function getProductosDestacados()
+    {
+        $productosDestacados = DB::table('pedido_detalle as dp')
+            ->join('productos as p', 'dp.idProducto', '=', 'p.idProducto')
+            ->join('modelos as m', 'dp.idModelo', '=', 'm.idModelo')
+            ->join('pagos as pg', 'dp.idPedido', '=', 'pg.idPedido')
+            ->leftJoin('imagenes_modelo as im', function ($join) {
+                $join->on('m.idModelo', '=', 'im.idModelo')
+                     ->whereRaw('im.idImagen = (SELECT MIN(idImagen) FROM imagenes_modelo WHERE idModelo = m.idModelo)');
+            })
+            ->select(
+                'p.idProducto',
+                'p.nombreProducto',
+                'm.idModelo',
+                'm.nombreModelo',
+                'im.urlImagen',
+                DB::raw('SUM(dp.cantidad) as totalVentas')
+            )
+            ->where('pg.estado_pago', 'completado')
+            ->groupBy('p.idProducto', 'm.idModelo', 'p.nombreProducto', 'm.nombreModelo', 'im.urlImagen')
+            ->orderBy('totalVentas', 'DESC')
+            ->paginate(4); // Paginación de 4 productos por página
+    
+        return response()->json([
+            'success' => true,
+            'data' => $productosDestacados
+        ]);
+    }
 
     //APIS ESTADISTICA
 

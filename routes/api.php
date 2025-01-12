@@ -36,6 +36,8 @@ use App\Http\Controllers\SuperAdminController;
 
         Route::get('/listarCategorias', [ClienteController::class, 'listarCategorias']);
 
+        Route::get('/productos-destacados', [ClienteController::class, 'getProductosDestacados']);
+
         Route::get('/ofertas/activa', [ClienteController::class, 'obtenerOfertaActiva']);
 
         // Ruta para verificar el token de correo
@@ -145,9 +147,6 @@ use App\Http\Controllers\SuperAdminController;
         
 
         Route::get('listarUsuarios', [SuperAdminController::class, 'listarUsuarios']);
-
-        Route::get('/listarProductos', [SuperAdminController::class, 'listarProductos']);
-
 
         Route::get('/configuracion/metodo-pago', [SuperAdminController::class, 'obtenerMetodoPago']);
         Route::put('/configuracion/metodo-pago', [SuperAdminController::class, 'actualizarMetodoPago']);
