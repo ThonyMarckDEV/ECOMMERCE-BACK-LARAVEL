@@ -2180,6 +2180,7 @@ class ClienteController extends Controller
             )
             ->where('pg.estado_pago', 'completado')
             ->groupBy('p.idProducto', 'm.idModelo', 'p.nombreProducto', 'm.nombreModelo', 'im.urlImagen')
+            ->having('totalVentas', '>', 2) // Filtra productos con más de 3 ventas
             ->orderBy('totalVentas', 'DESC')
             ->paginate(4); // Paginación de 4 productos por página
     
