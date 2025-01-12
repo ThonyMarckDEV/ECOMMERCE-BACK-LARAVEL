@@ -1780,6 +1780,65 @@ class SuperAdminController extends Controller
         ]);
     }
 
+    public function obtenerMetodoPago()
+    {
+        try {
+            // Obtener el método de pago activo
+            $metodoPago = DB::table('tipo_pago')
+                ->where('status', 1)
+                ->first();
+
+            if (!$metodoPago) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró un método de pago activo.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'metodo' => $metodoPago->nombre,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener el método de pago.',
+            ], 500);
+        }
+    }
+
+    public function actualizarMetodoPago(Request $request)
+    {
+        $request->validate([
+            'metodo' => 'required|in:mercadopago,comprobante',
+            'status' => 'required|boolean',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Desactivar todos los métodos de pago
+            DB::table('tipo_pago')->update(['status' => 0]);
+
+            // Activar el método de pago seleccionado
+            DB::table('tipo_pago')
+                ->where('nombre', $request->metodo)
+                ->update(['status' => $request->status]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Método de pago actualizado correctamente.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el método de pago.',
+            ], 500);
+        }
+    }
+
 
     //FUNCIONES PARA REPORTES
 

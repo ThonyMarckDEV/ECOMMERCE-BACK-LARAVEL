@@ -147,6 +147,10 @@ use App\Http\Controllers\SuperAdminController;
         Route::get('listarUsuarios', [SuperAdminController::class, 'listarUsuarios']);
 
         Route::get('/listarProductos', [SuperAdminController::class, 'listarProductos']);
+
+
+        Route::get('/configuracion/metodo-pago', [SuperAdminController::class, 'obtenerMetodoPago']);
+        Route::put('/configuracion/metodo-pago', [SuperAdminController::class, 'actualizarMetodoPago']);
     });
 
 
