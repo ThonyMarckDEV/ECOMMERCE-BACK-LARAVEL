@@ -77,7 +77,7 @@ class PaymentController extends Controller
         $items = [];
         foreach ($detalles as $detalle) {
             // Obtener los detalles del pedido usando el idDetallePedido
-            $detallePedido = PedidoDetalle::find($detalle['idDetallePedido']); // Suponiendo que 'DetallePedido' es el nombre del modelo
+            $detallePedido = PedidoDetalle::find($detalle['idDetallePedido']);
         
             if ($detallePedido) {
                 // Obtener idModelo, idTalla, cantidad y precioUnitario desde el detalle
@@ -483,6 +483,174 @@ class PaymentController extends Controller
         }
     }
 
+    // public function recibirPagoComprobante(Request $request)
+    // {
+    //     try {
+    //         $idPedido = $request->input('idPedido');
+    //         $comprobante = $request->file('comprobante');
+
+    //         if (!$idPedido || !$comprobante) {
+    //             Log::warning('ID del pedido o comprobante no proporcionado.');
+    //             return response()->json(['error' => 'ID del pedido y comprobante son requeridos'], 400);
+    //         }
+
+    //         // Validar el archivo
+    //         $validator = Validator::make($request->all(), [
+    //             'comprobante' => 'required|image|mimes:jpeg,png,jpg|max:2048'
+    //         ]);
+
+    //         if ($validator->fails()) {
+    //             return response()->json(['error' => 'El archivo debe ser una imagen (jpeg, png, jpg) y no exceder 2MB'], 400);
+    //         }
+
+    //          // Guardar el comprobante
+    //         $nombreArchivo = time() . '_' . $comprobante->getClientOriginalName();
+    //         $rutaComprobante = $comprobante->storeAs("comprobantes/pedidos/{$idPedido}", $nombreArchivo, 'public');
+
+    //         $pagoModel = Pago::where('idPedido', $idPedido)->first();
+
+    //         if (!$pagoModel) {
+    //             return response()->json(['success' => false, 'message' => 'Pago no encontrado para este pedido'], 404);
+    //         }
+
+    //         if ($pagoModel->estado_pago === 'completado') {
+    //             return response()->json(['success' => false, 'message' => 'Este pago ya ha sido completado previamente'], 200);
+    //         }
+
+    //         // Actualizar el modelo de pago
+    //         $pagoModel->estado_pago = 'completado';
+    //         $pagoModel->comprobante_url = $rutaComprobante;
+    //         $pagoModel->metodo_pago = $request->input('metodo_pago', 'transferencia'); // o yape, plin, etc.
+    //         $pagoModel->fecha_pago = now();
+    //         $pagoModel->save();
+
+    //         $pedido = Pedido::with('detalles')->find($idPedido);
+
+    //         if (!$pedido) {
+    //             return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+    //         }
+
+    //         if (in_array($pedido->estado, ['aprobando', 'completado'])) {
+    //             return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
+    //         }
+
+    //         $pedido->estado = 'aprobando';
+    //         $pedido->save();
+
+    //         // Verificar y actualizar stock
+    //         foreach ($pedido->detalles as $detalle) {
+    //             $stock = Stock::where('idModelo', $detalle->idModelo)
+    //                         ->where('idTalla', $detalle->idTalla)
+    //                         ->first();
+            
+    //             if ($stock) {
+    //                 if ($stock->cantidad >= $detalle->cantidad) {
+    //                     $stock->cantidad -= $detalle->cantidad;
+    //                     $stock->save();
+    //                 } else {
+    //                     Log::warning('Stock insuficiente para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla);
+    //                     return response()->json([
+    //                         'success' => false,
+    //                         'message' => 'Stock insuficiente para el producto'
+    //                     ], 400);
+    //                 }
+    //             } else {
+    //                 Log::warning('No se encontró stock para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla);
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'No se encontró stock para el producto'
+    //                 ], 404);
+    //             }
+    //         }
+
+    //         // MANEJO DE FACTURACIÓN
+    //         if (Facturacion::where('status', 1)->exists()) {
+    //             if ($pedido->tipo_comprobante === 'boleta') {
+    //                 $this->FacturacionActivaBoleta($idPedido);
+    //             } elseif ($pedido->tipo_comprobante === 'factura') {
+    //                 if (!$pedido->ruc) {
+    //                     return response()->json([
+    //                         'success' => false,
+    //                         'message' => 'RUC no válido'
+    //                     ], 400);
+    //                 }
+    //                 $this->FacturacionActivaFactura($idPedido, $pedido->ruc);
+    //             }
+    //         } else {
+    //             // Generar comprobante local
+    //             $usuario = Usuario::find($pedido->idUsuario);
+                
+    //             if (!$usuario) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Usuario no encontrado'
+    //                 ], 404);
+    //             }
+                
+    //             $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
+    //             $detallesPedido = [];
+    //             $total = 0;
+                
+    //             foreach ($pedido->detalles as $detalle) {
+    //                 $producto = Producto::find($detalle->idProducto);
+    //                 $detallesPedido[] = [
+    //                     'producto' => $producto ? $producto->nombreProducto : 'Producto no encontrado',
+    //                     'cantidad' => $detalle->cantidad,
+    //                     'subtotal' => $detalle->subtotal,
+    //                 ];
+    //                 $total += $detalle->subtotal;
+    //             }
+                
+    //             if ($pedido->tipo_comprobante === 'boleta') {
+    //                 $pdfDirectory = "storage/comprobantesEcommerce/Boletas/";
+    //                 $pdfFileName = "boleta_" . date('Ymd_His') . "_" . $idPedido . ".pdf";
+    //                 $pdfPath = $pdfDirectory . $pdfFileName;
+                    
+    //                 if (!file_exists($pdfDirectory)) {
+    //                     mkdir($pdfDirectory, 0755, true);
+    //                 }
+                    
+    //                 $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
+    //                 // Modified section from the main code where the email is sent
+    //                 Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoBoleta(
+    //                     $nombreCompleto,
+    //                     $detallesPedido,
+    //                     $total,
+    //                     $pdfPath,
+    //                     $idPedido  // Pass the idPedido
+    //                 ));
+    //             } elseif ($pedido->tipo_comprobante === 'factura') {
+    //                 $pdfDirectory = "storage/comprobantesEcommerce/Facturas/";
+    //                 $pdfFileName = "factura_" . date('Ymd_His') . "_" . $idPedido . ".pdf";
+    //                 $pdfPath = $pdfDirectory . $pdfFileName;
+                    
+    //                 if (!file_exists($pdfDirectory)) {
+    //                     mkdir($pdfDirectory, 0755, true);
+    //                 }
+                    
+    //                 $this->generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $pedido->ruc);
+    //                 Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoFactura(
+    //                     $nombreCompleto,
+    //                     $detallesPedido,
+    //                     $total,
+    //                     $pdfPath,
+    //                     $pedido->ruc,
+    //                     $idPedido  // Pass the idPedido
+    //                 ));
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'success' => true, 
+    //             'message' => 'Comprobante recibido y procesado correctamente'
+    //         ], 200);
+
+    //     } catch (\Exception $e) {
+    //         Log::error('Error al procesar el comprobante: ' . $e->getMessage());
+    //         return response()->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function recibirPagoComprobante(Request $request)
     {
         try {
@@ -503,7 +671,48 @@ class PaymentController extends Controller
                 return response()->json(['error' => 'El archivo debe ser una imagen (jpeg, png, jpg) y no exceder 2MB'], 400);
             }
 
-             // Guardar el comprobante
+            // Obtener el pedido
+            $pedido = Pedido::with('detalles')->find($idPedido);
+
+            if (!$pedido) {
+                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
+            }
+
+             // Validar stock antes de proceder
+            $productosSinStock = []; // Array para almacenar productos sin stock
+
+            foreach ($pedido->detalles as $detalle) {
+                $stock = Stock::where('idModelo', $detalle->idModelo)
+                            ->where('idTalla', $detalle->idTalla)
+                            ->first();
+
+                if (!$stock) {
+                    // Obtener el nombre del producto
+                    $producto = Producto::find($detalle->idProducto);
+                    $nombreProducto = $producto ? $producto->nombreProducto : 'Producto no encontrado';
+                    
+                    // Agregar a la lista de productos sin stock
+                    $productosSinStock[] = $nombreProducto;
+                } elseif ($stock->cantidad < $detalle->cantidad) {
+                    // Obtener el nombre del producto
+                    $producto = Producto::find($detalle->idProducto);
+                    $nombreProducto = $producto ? $producto->nombreProducto : 'Producto no encontrado';
+                    
+                    // Agregar a la lista de productos sin stock
+                    $productosSinStock[] = $nombreProducto;
+                }
+            }
+
+            // Si hay productos sin stock, devolver un error con la lista
+            if (!empty($productosSinStock)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Los siguientes productos no tienen stock suficiente: ' . implode(', ', $productosSinStock),
+                    'productosSinStock' => $productosSinStock // Enviar la lista de productos sin stock
+                ], 400);
+            }
+
+            // Guardar el comprobante
             $nombreArchivo = time() . '_' . $comprobante->getClientOriginalName();
             $rutaComprobante = $comprobante->storeAs("comprobantes/pedidos/{$idPedido}", $nombreArchivo, 'public');
 
@@ -524,43 +733,18 @@ class PaymentController extends Controller
             $pagoModel->fecha_pago = now();
             $pagoModel->save();
 
-            $pedido = Pedido::with('detalles')->find($idPedido);
-
-            if (!$pedido) {
-                return response()->json(['success' => false, 'message' => 'Pedido no encontrado'], 404);
-            }
-
-            if (in_array($pedido->estado, ['aprobando', 'completado'])) {
-                return response()->json(['success' => false, 'message' => 'El pedido ya fue procesado previamente'], 200);
-            }
-
+            // Actualizar estado del pedido
             $pedido->estado = 'aprobando';
             $pedido->save();
 
-            // Verificar y actualizar stock
+            // Descontar stock
             foreach ($pedido->detalles as $detalle) {
                 $stock = Stock::where('idModelo', $detalle->idModelo)
                             ->where('idTalla', $detalle->idTalla)
                             ->first();
-            
-                if ($stock) {
-                    if ($stock->cantidad >= $detalle->cantidad) {
-                        $stock->cantidad -= $detalle->cantidad;
-                        $stock->save();
-                    } else {
-                        Log::warning('Stock insuficiente para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla);
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Stock insuficiente para el producto'
-                        ], 400);
-                    }
-                } else {
-                    Log::warning('No se encontró stock para el producto con idModelo: ' . $detalle->idModelo . ', idTalla: ' . $detalle->idTalla);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No se encontró stock para el producto'
-                    ], 404);
-                }
+
+                $stock->cantidad -= $detalle->cantidad;
+                $stock->save();
             }
 
             // MANEJO DE FACTURACIÓN
@@ -579,18 +763,18 @@ class PaymentController extends Controller
             } else {
                 // Generar comprobante local
                 $usuario = Usuario::find($pedido->idUsuario);
-                
+
                 if (!$usuario) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Usuario no encontrado'
                     ], 404);
                 }
-                
+
                 $nombreCompleto = "{$usuario->nombres} {$usuario->apellidos}";
                 $detallesPedido = [];
                 $total = 0;
-                
+
                 foreach ($pedido->detalles as $detalle) {
                     $producto = Producto::find($detalle->idProducto);
                     $detallesPedido[] = [
@@ -600,34 +784,33 @@ class PaymentController extends Controller
                     ];
                     $total += $detalle->subtotal;
                 }
-                
+
                 if ($pedido->tipo_comprobante === 'boleta') {
                     $pdfDirectory = "storage/comprobantesEcommerce/Boletas/";
                     $pdfFileName = "boleta_" . date('Ymd_His') . "_" . $idPedido . ".pdf";
                     $pdfPath = $pdfDirectory . $pdfFileName;
-                    
+
                     if (!file_exists($pdfDirectory)) {
                         mkdir($pdfDirectory, 0755, true);
                     }
-                    
+
                     $this->generateBoletaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total);
-                    // Modified section from the main code where the email is sent
                     Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoBoleta(
                         $nombreCompleto,
                         $detallesPedido,
                         $total,
                         $pdfPath,
-                        $idPedido  // Pass the idPedido
+                        $idPedido
                     ));
                 } elseif ($pedido->tipo_comprobante === 'factura') {
                     $pdfDirectory = "storage/comprobantesEcommerce/Facturas/";
                     $pdfFileName = "factura_" . date('Ymd_His') . "_" . $idPedido . ".pdf";
                     $pdfPath = $pdfDirectory . $pdfFileName;
-                    
+
                     if (!file_exists($pdfDirectory)) {
                         mkdir($pdfDirectory, 0755, true);
                     }
-                    
+
                     $this->generateFacturaPDF($pdfPath, $nombreCompleto, $detallesPedido, $total, $pedido->ruc);
                     Mail::to($usuario->correo)->send(new NotificacionPagoCompletadoFactura(
                         $nombreCompleto,
@@ -635,13 +818,13 @@ class PaymentController extends Controller
                         $total,
                         $pdfPath,
                         $pedido->ruc,
-                        $idPedido  // Pass the idPedido
+                        $idPedido
                     ));
                 }
             }
 
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => 'Comprobante recibido y procesado correctamente'
             ], 200);
 
