@@ -67,4 +67,9 @@ class Producto extends Model
          return $this->belongsToMany(Oferta::class, 'productosofertas', 'idProducto', 'idOferta');
      }
 
+     public function caracteristicasProducto()
+     {
+         return $this->hasOne(CaracteristicaProducto::class, 'idProducto');
+     }
+
 }

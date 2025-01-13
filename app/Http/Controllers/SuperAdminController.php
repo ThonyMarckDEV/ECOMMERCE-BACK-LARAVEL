@@ -13,6 +13,7 @@ use App\Models\DetalleDireccionPedido;
 use Illuminate\Http\Request;
 use App\Mail\NotificacionPagoCompletado;
 use App\Mail\NotificacionPedidoEliminado;
+use App\Models\CaracteristicaProducto;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -323,42 +324,37 @@ class SuperAdminController extends Controller
     }
 
 
-   
     public function listarProductos(Request $request)
     {
         // Obtener los parámetros de la solicitud
         $categoriaId = $request->input('categoria');
         $texto = $request->input('texto');
         $idProducto = $request->input('idProducto');
-        $perPage = $request->input('perPage', 6); // Número de elementos por página
-        $filters = json_decode($request->input('filters', '{}'), true); // Filtros adicionales
-
-        // Construir la consulta para obtener los productos con relaciones
+        $perPage = $request->input('perPage', 6);
+        $filters = json_decode($request->input('filters', '{}'), true);
+    
+        // Construir la consulta base
         $query = Producto::with([
-            'categoria:idCategoria,nombreCategoria,estado', // Incluir el campo 'estado' de la categoría
+            'categoria:idCategoria,nombreCategoria',
+            'caracteristicasProducto', // Cambiar a la relación correcta
             'modelos' => function($query) {
-                $query->with([
-                    'imagenes:idImagen,urlImagen,idModelo'
-                ]);
+                $query->with(['imagenes:idImagen,urlImagen,idModelo']);
             }
-        ]);
-
-        // Filtrar por idProducto si el parámetro 'idProducto' existe
+        ])->select('productos.*'); // Seleccionar todos los campos de productos
+    
+        // Aplicar filtros
         if ($idProducto) {
             $query->where('idProducto', $idProducto);
         }
-
-        // Filtrar por categoría si el parámetro 'categoria' existe
+    
         if ($categoriaId) {
             $query->where('idCategoria', $categoriaId);
         }
-
-        // Filtrar por texto en el nombre del producto si el parámetro 'texto' existe
+    
         if ($texto) {
             $query->where('nombreProducto', 'like', '%' . $texto . '%');
         }
-
-        // Aplicar filtros adicionales
+    
         if (!empty($filters)) {
             if (isset($filters['nombreProducto']) && $filters['nombreProducto'] !== '') {
                 $query->where('nombreProducto', 'like', '%' . $filters['nombreProducto'] . '%');
@@ -370,49 +366,24 @@ class SuperAdminController extends Controller
                 $query->where('estado', $filters['estado']);
             }
         }
-
-        // Paginar los resultados
+    
+        // Paginar resultados
         $productos = $query->paginate($perPage);
-
-        // Si se pasó un 'idProducto', se devuelve un solo producto
-        if ($idProducto) {
-            $producto = $productos->first();
-
-            if ($producto) {
-                $productoData = [
-                    'idProducto' => $producto->idProducto,
-                    'nombreProducto' => $producto->nombreProducto,
-                    'descripcion' => $producto->descripcion,
-                    'estado' => $producto->estado,
-                    'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
-                    'modelos' => $producto->modelos->map(function($modelo) {
-                        return [
-                            'idModelo' => $modelo->idModelo,
-                            'nombreModelo' => $modelo->nombreModelo,
-                            'imagenes' => $modelo->imagenes->map(function($imagen) {
-                                return [
-                                    'idImagen' => $imagen->idImagen,
-                                    'urlImagen' => $imagen->urlImagen
-                                ];
-                            })
-                        ];
-                    })
-                ];
-
-                return response()->json(['data' => $productoData], 200);
-            } else {
-                return response()->json(['message' => 'Producto no encontrado'], 404);
-            }
-        }
-
-        // Si no se pasó un 'idProducto', devolver todos los productos paginados
+    
+        // Transformar datos
         $productosData = $productos->map(function($producto) {
             return [
                 'idProducto' => $producto->idProducto,
                 'nombreProducto' => $producto->nombreProducto,
-                'descripcion' => $producto->descripcion ? : 'N/A',
+                'descripcion' => $producto->descripcion ?: 'N/A',
+                'precio' => $producto->precio,
                 'estado' => $producto->estado,
-                'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
+                'idCategoria' => $producto->idCategoria,
+                'categoria' => [
+                    'idCategoria' => $producto->categoria ? $producto->categoria->idCategoria : null,
+                    'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría'
+                ],
+                'caracteristicas' => $producto->caracteristicasProducto ? $producto->caracteristicasProducto->caracteristicas : '',
                 'modelos' => $producto->modelos->map(function($modelo) {
                     return [
                         'idModelo' => $modelo->idModelo,
@@ -427,7 +398,7 @@ class SuperAdminController extends Controller
                 })
             ];
         });
-
+    
         return response()->json([
             'data' => $productosData,
             'current_page' => $productos->currentPage(),
@@ -436,7 +407,6 @@ class SuperAdminController extends Controller
             'total' => $productos->total(),
         ], 200);
     }
-
 
 
        /**
@@ -538,6 +508,7 @@ class SuperAdminController extends Controller
 
             // Validar el request
             Log::info('Validando request');
+           // Actualizar la validación en el método
             $request->validate([
                 'nombreProducto' => 'required',
                 'descripcion' => 'nullable',
@@ -550,10 +521,11 @@ class SuperAdminController extends Controller
                 'modelos.*.imagenes.*' => [
                     'required',
                     'file',
-                    'mimes:jpeg,jpg,png,avif,webp', // Formatos permitidos
-                    'max:5120', // Tamaño máximo de 5 MB
+                    'mimes:jpeg,jpg,png,avif,webp',
+                    'max:5120',
                 ],
                 'modelos.*.tallas' => 'array',
+                'caracteristicas' => 'nullable|string|max:65535', // Para campo TEXT
             ]);
 
             Log::info('Request validado correctamente');
@@ -561,7 +533,7 @@ class SuperAdminController extends Controller
             DB::beginTransaction();
             Log::info('Iniciando transacción de base de datos');
 
-            // Crear el producto
+           // Crear el producto
             Log::info('Creando producto');
             $producto = Producto::create([
                 'nombreProducto' => $request->nombreProducto,
@@ -571,6 +543,23 @@ class SuperAdminController extends Controller
                 'idCategoria' => $request->idCategoria,
             ]);
             Log::info('Producto creado:', ['id' => $producto->idProducto]);
+
+            // Manejar características del producto
+            if ($request->has('caracteristicas') && !empty($request->caracteristicas)) {
+                Log::info('Procesando características del producto');
+                CaracteristicaProducto::create([
+                    'idProducto' => $producto->idProducto,
+                    'caracteristicas' => $request->caracteristicas
+                ]);
+                Log::info('Características agregadas al producto');
+            } else {
+                // Agregar característica por defecto
+                CaracteristicaProducto::create([
+                    'idProducto' => $producto->idProducto,
+                    'caracteristicas' => 'Sin características disponibles'
+                ]);
+                Log::info('Agregada característica por defecto');
+            }
 
             // Crear modelos y manejar su stock
             foreach ($request->modelos as $modeloData) {
@@ -723,28 +712,67 @@ class SuperAdminController extends Controller
      */
     public function actualizarProducto(Request $request, $idProducto)
     {
-        $producto = Producto::find($idProducto);
-
-        if (!$producto) {
-            return response()->json(['error' => 'Producto no encontrado'], 404);
+        try {
+            DB::beginTransaction();
+    
+            // Validar la existencia del producto
+            $producto = Producto::findOrFail($idProducto);
+            
+            // Guardar el nombre antiguo para el log
+            $nombreProductoAntiguo = $producto->nombreProducto;
+            
+            // Validar los datos de entrada
+            $validator = Validator::make($request->all(), [
+                'nombreProducto' => 'required|string|max:255',
+                'descripcion' => 'nullable|string',
+                'precio' => 'required|numeric|min:0',
+                'idCategoria' => 'required|exists:categorias,idCategoria',
+                'caracteristicas' => 'nullable|string',
+                'estado' => 'nullable|in:activo,inactivo'
+            ]);
+    
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+            
+            // Actualizar datos del producto
+            $producto->update([
+                'nombreProducto' => $request->nombreProducto,
+                'descripcion' => $request->descripcion,
+                'precio' => $request->precio,
+                'idCategoria' => $request->idCategoria,
+                'estado' => $request->estado ?? $producto->estado
+            ]);
+            
+            // Actualizar o crear características
+            if ($request->has('caracteristicas')) {
+                CaracteristicaProducto::updateOrCreate(
+                    ['idProducto' => $idProducto],
+                    ['caracteristicas' => $request->caracteristicas]
+                );
+            }
+            
+            // Registrar en el log
+            $usuarioId = auth()->id();
+            $usuario = Usuario::find($usuarioId);
+            $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
+            $accion = "$nombreUsuario actualizó el producto: $nombreProductoAntiguo a {$producto->nombreProducto}";
+            $this->agregarLog($usuarioId, $accion);
+    
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Producto actualizado correctamente',
+                'producto' => $producto->load(['caracteristicasProducto', 'categoria'])
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al actualizar el producto',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        // Obtener el nombre del producto antes de la actualización
-        $nombreProductoAntiguo = $producto->nombreProducto;
-
-        // Actualizar los datos del producto
-        $producto->nombreProducto = $request->nombreProducto;
-        $producto->descripcion = $request->descripcion;
-        $producto->save();
-
-        // Registrar la acción de actualización del producto en el log
-        $usuarioId = auth()->id(); // Obtener el ID del usuario autenticado
-        $usuario = Usuario::find($usuarioId);
-        $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
-        $accion = "$nombreUsuario actualizó el producto: $nombreProductoAntiguo a {$producto->nombreProducto}";
-        $this->agregarLog($usuarioId, $accion);
-
-        return response()->json(['message' => 'Producto actualizado correctamente']);
     }
 
 

@@ -27,6 +27,7 @@ use App\Mail\NotificacionDireccionAgregada;
 use App\Mail\NotificacionDireccionEliminada;
 use App\Mail\NotificacionDireccionPredeterminada;
 use App\Mail\CodigoVerificacion;
+use App\Models\CaracteristicaProducto;
 use App\Models\Categoria;
 use App\Models\DetalleDireccionPedido;
 use App\Models\Oferta;
@@ -313,163 +314,6 @@ class ClienteController extends Controller
     }
 
 
-    // public function listarProductos(Request $request)
-    // {
-    //     // Obtener los parámetros de la solicitud
-    //     $categoriaId = $request->input('categoria');
-    //     $texto = $request->input('texto');
-    //     $idProducto = $request->input('idProducto');
-    //     $precioInicial = $request->input('precioInicial');
-    //     $precioFinal = $request->input('precioFinal');
-    //     $perPage = $request->input('perPage', 8); // Número de productos por página, por defecto 8
-
-    //     // Construir la consulta para obtener los productos con relaciones
-    //     $query = Producto::with([
-    //         'categoria:idCategoria,nombreCategoria,estado', // Incluir el campo 'estado' de la categoría
-    //         'modelos' => function($query) {
-    //             $query->with([
-    //                 'imagenes:idImagen,urlImagen,idModelo',
-    //                 'stock' => function($query) {
-    //                     $query->with('talla:idTalla,nombreTalla');
-    //                 }
-    //             ]);
-    //         },
-    //         'ofertas' => function($query) {
-    //             $query->where('estado', 1) // Ofertas activas
-    //                 ->where('fechaInicio', '<=', now())
-    //                 ->where('fechaFin', '>=', now());
-    //         }
-    //     ]);
-
-    //     // Filtrar por estado 'activo' en la tabla 'productos'
-    //     $query->where('estado', 'activo');
-
-    //     // Filtrar por estado 'activo' en la tabla 'categorias'
-    //     $query->whereHas('categoria', function($q) {
-    //         $q->where('estado', 'activo');
-    //     });
-
-    //     // Filtrar por idProducto si el parámetro 'idProducto' existe
-    //     if ($idProducto) {
-    //         $query->where('idProducto', $idProducto);
-    //     }
-
-    //     // Filtrar por categoría si el parámetro 'categoria' existe
-    //     if ($categoriaId) {
-    //         $query->where('idCategoria', $categoriaId);
-    //     }
-
-    //     // Filtrar por texto en el nombre del producto si el parámetro 'texto' existe
-    //     if ($texto) {
-    //         $query->where('nombreProducto', 'like', '%' . $texto . '%');
-    //     }
-
-    //     // Filtrar por rango de precios si se proporcionan
-    //     if ($precioInicial !== null && $precioFinal !== null) {
-    //         $query->whereBetween('precio', [$precioInicial, $precioFinal]);
-    //     }
-
-    //     // Obtener los productos paginados
-    //     $productos = $query->paginate($perPage);
-
-    //     // Si se pasó un 'idProducto', se devuelve un solo producto
-    //     if ($idProducto) {
-    //         $producto = $productos->first();
-
-    //         if ($producto) {
-    //             // Verificar si el producto tiene una oferta activa
-    //             $precioOriginal = $producto->precio;
-    //             $precioDescuento = $precioOriginal;
-    //             $ofertaActiva = $producto->ofertas->first();
-
-    //             if ($ofertaActiva) {
-    //                 $descuento = $ofertaActiva->porcentajeDescuento;
-    //                 $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
-    //             }
-
-    //             $productoData = [
-    //                 'idProducto' => $producto->idProducto,
-    //                 'nombreProducto' => $producto->nombreProducto,
-    //                 'descripcion' => $producto->descripcion,
-    //                 'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
-    //                 'precioOriginal' => $precioOriginal,
-    //                 'precioDescuento' => $precioDescuento,
-    //                 'tieneOferta' => !!$ofertaActiva,
-    //                 'modelos' => $producto->modelos->map(function($modelo) {
-    //                     return [
-    //                         'idModelo' => $modelo->idModelo,
-    //                         'nombreModelo' => $modelo->nombreModelo,
-    //                         'imagenes' => $modelo->imagenes->map(function($imagen) {
-    //                             return [
-    //                                 'urlImagen' => $imagen->urlImagen
-    //                             ];
-    //                         }),
-    //                         'tallas' => $modelo->stock->map(function($stock) {
-    //                             return [
-    //                                 'idTalla' => $stock->talla->idTalla,
-    //                                 'nombreTalla' => $stock->talla->nombreTalla,
-    //                                 'cantidad' => $stock->cantidad
-    //                             ];
-    //                         })
-    //                     ];
-    //                 })
-    //             ];
-
-    //             return response()->json(['data' => $productoData], 200);
-    //         } else {
-    //             return response()->json(['message' => 'Producto no encontrado'], 404);
-    //         }
-    //     }
-
-    //     // Si no se pasó un 'idProducto', devolver todos los productos paginados
-    //     $productosData = $productos->map(function($producto) {
-    //         $precioOriginal = $producto->precio;
-    //         $precioDescuento = $precioOriginal;
-    //         $ofertaActiva = $producto->ofertas->first();
-
-    //         if ($ofertaActiva) {
-    //             $descuento = $ofertaActiva->porcentajeDescuento;
-    //             $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
-    //         }
-
-    //         return [
-    //             'idProducto' => $producto->idProducto,
-    //             'nombreProducto' => $producto->nombreProducto,
-    //             'descripcion' => $producto->descripcion,
-    //             'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
-    //             'precioOriginal' => $precioOriginal,
-    //             'precioDescuento' => $precioDescuento,
-    //             'tieneOferta' => !!$ofertaActiva,
-    //             'modelos' => $producto->modelos->map(function($modelo) {
-    //                 return [
-    //                     'idModelo' => $modelo->idModelo,
-    //                     'nombreModelo' => $modelo->nombreModelo,
-    //                     'imagenes' => $modelo->imagenes->map(function($imagen) {
-    //                         return [
-    //                             'urlImagen' => $imagen->urlImagen
-    //                         ];
-    //                     }),
-    //                     'tallas' => $modelo->stock->map(function($stock) {
-    //                         return [
-    //                             'idTalla' => $stock->talla->idTalla,
-    //                             'nombreTalla' => $stock->talla->nombreTalla,
-    //                             'cantidad' => $stock->cantidad
-    //                         ];
-    //                     })
-    //                 ];
-    //             })
-    //         ];
-    //     });
-
-    //     return response()->json([
-    //         'data' => $productosData,
-    //         'current_page' => $productos->currentPage(),
-    //         'per_page' => $productos->perPage(),
-    //         'total' => $productos->total(),
-    //         'last_page' => $productos->lastPage(),
-    //     ], 200);
-    // }
-
     public function listarProductos(Request $request)
     {
         // Obtener los parámetros de la solicitud
@@ -478,8 +322,9 @@ class ClienteController extends Controller
         $idProducto = $request->input('idProducto');
         $precioInicial = $request->input('precioInicial');
         $precioFinal = $request->input('precioFinal');
+        $sort = $request->input('sort');
         $perPage = $request->input('perPage', 8); // Número de productos por página, por defecto 8
-    
+
         // Construir la consulta para obtener los productos con relaciones
         $query = Producto::with([
             'categoria:idCategoria,nombreCategoria,estado', // Incluir el campo 'estado' de la categoría
@@ -497,53 +342,69 @@ class ClienteController extends Controller
                     ->where('fechaFin', '>=', now());
             }
         ]);
-    
+
         // Filtrar por estado 'activo' en la tabla 'productos'
         $query->where('estado', 'activo');
-    
+
         // Filtrar por estado 'activo' en la tabla 'categorias'
         $query->whereHas('categoria', function($q) {
             $q->where('estado', 'activo');
         });
-    
+
         // Filtrar por idProducto si el parámetro 'idProducto' existe
         if ($idProducto) {
             $query->where('idProducto', $idProducto);
         }
-    
+
         // Filtrar por categoría si el parámetro 'categoria' existe
         if ($categoriaId) {
             $query->where('idCategoria', $categoriaId);
         }
-    
+
         // Filtrar por texto en el nombre del producto si el parámetro 'texto' existe
         if ($texto) {
             $query->where('nombreProducto', 'like', '%' . $texto . '%');
         }
-    
+
         // Filtrar por rango de precios solo si ambos parámetros están presentes
         if ($precioInicial !== null && $precioFinal !== null) {
             $query->whereBetween('precio', [$precioInicial, $precioFinal]);
         }
-    
+
+        // Aplicar ordenamiento según el parámetro sort
+        switch ($sort) {
+            case 'az':
+                $query->orderBy('nombreProducto', 'asc');
+                break;
+            case 'za':
+                $query->orderBy('nombreProducto', 'desc');
+                break;
+            case 'price_asc':
+                $query->orderBy('precio', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('precio', 'desc');
+                break;
+        }
+
         // Obtener los productos paginados
         $productos = $query->paginate($perPage);
-    
+
         // Si se pasó un 'idProducto', se devuelve un solo producto
         if ($idProducto) {
             $producto = $productos->first();
-    
+
             if ($producto) {
                 // Verificar si el producto tiene una oferta activa
                 $precioOriginal = $producto->precio;
                 $precioDescuento = $precioOriginal;
                 $ofertaActiva = $producto->ofertas->first();
-    
+
                 if ($ofertaActiva) {
                     $descuento = $ofertaActiva->porcentajeDescuento;
                     $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
                 }
-    
+
                 $productoData = [
                     'idProducto' => $producto->idProducto,
                     'nombreProducto' => $producto->nombreProducto,
@@ -571,24 +432,24 @@ class ClienteController extends Controller
                         ];
                     })
                 ];
-    
+
                 return response()->json(['data' => $productoData], 200);
             } else {
                 return response()->json(['message' => 'Producto no encontrado'], 404);
             }
         }
-    
+
         // Si no se pasó un 'idProducto', devolver todos los productos paginados
         $productosData = $productos->map(function($producto) {
             $precioOriginal = $producto->precio;
             $precioDescuento = $precioOriginal;
             $ofertaActiva = $producto->ofertas->first();
-    
+
             if ($ofertaActiva) {
                 $descuento = $ofertaActiva->porcentajeDescuento;
                 $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
             }
-    
+
             return [
                 'idProducto' => $producto->idProducto,
                 'nombreProducto' => $producto->nombreProducto,
@@ -617,7 +478,7 @@ class ClienteController extends Controller
                 })
             ];
         });
-    
+
         return response()->json([
             'data' => $productosData,
             'current_page' => $productos->currentPage(),
@@ -625,6 +486,23 @@ class ClienteController extends Controller
             'total' => $productos->total(),
             'last_page' => $productos->lastPage(),
         ], 200);
+    }
+
+    public function obtenerCaracteristicas($idProducto)
+    {
+        $caracteristicas = CaracteristicaProducto::where('idProducto', $idProducto)->first();
+
+        if (!$caracteristicas) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontraron características para este producto.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $caracteristicas,
+        ]);
     }
 
     /**
@@ -2295,6 +2173,24 @@ class ClienteController extends Controller
 
         // Devolver las categorías como JSON con un mensaje de éxito
         return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
+    public function obtenerPrecioMaximo()
+    {
+        // Obtener el precio más alto de la tabla productos
+        $precioMaximo = Producto::max('precio');
+        
+        if ($precioMaximo === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontraron productos.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'precioMaximo' => $precioMaximo
+        ]);
     }
 
     public function getTipoPago(Request $request)

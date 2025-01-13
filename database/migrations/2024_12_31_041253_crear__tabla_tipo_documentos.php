@@ -13,7 +13,6 @@ return new class extends Migration
             $table->string('codigo', 2);
             $table->string('descripcion');
             $table->string('abreviatura', 1);
-            $table->timestamps();
         });
     }
 
