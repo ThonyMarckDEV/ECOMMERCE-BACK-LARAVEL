@@ -19,7 +19,8 @@ class Modelo extends Model
     protected $fillable = [
         'nombreModelo',
         'idProducto',
-        'urlModelo'
+        'urlModelo',
+        'estado'
     ];
 
     // Relación de muchos a uno hacia Producto

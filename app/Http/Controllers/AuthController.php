@@ -993,13 +993,13 @@ class AuthController extends Controller
             ], 404);
         }
 
-        // Verificar si el token en la base de datos es diferente al token actual
-        if ($actividadUsuario->jwt !== $token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'El token no coincide con el almacenado'
-            ], 403);
-        }
+        // // Verificar si el token en la base de datos es diferente al token actual
+        // if ($actividadUsuario->jwt !== $token) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'El token no coincide con el almacenado'
+        //     ], 403);
+        // }
 
         // Si el token es válido, devolver el estado y el token actual
         return response()->json([

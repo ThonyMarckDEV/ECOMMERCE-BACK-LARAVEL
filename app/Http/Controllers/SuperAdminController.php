@@ -568,6 +568,7 @@ class SuperAdminController extends Controller
                     'idProducto' => $producto->idProducto,
                     'nombreModelo' => $modeloData['nombreModelo'],
                     'urlModelo' => null,
+                    'estado' => 'activo'
                 ]);
                 Log::info('Modelo creado:', ['id' => $modelo->idModelo]);
 
@@ -1222,7 +1223,8 @@ class SuperAdminController extends Controller
         $modelo = Modelo::create([
             'idProducto' => $request->idProducto,
             'nombreModelo' => $request->nombreModelo,
-            'urlModelo' => $urlModelo
+            'urlModelo' => $urlModelo,
+            'estado' => 'activo',
         ]);
         
         return response()->json($modelo, 201);
