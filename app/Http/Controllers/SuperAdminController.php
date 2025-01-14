@@ -875,7 +875,6 @@ class SuperAdminController extends Controller
         // Actualizar los datos del modelo
         $modelo->update([
             'nombreModelo' => $request->nombreModelo,
-            'descripcion' => $request->descripcion,
         ]);
 
         // Registrar la acción de edición del modelo en el log
@@ -1223,7 +1222,7 @@ class SuperAdminController extends Controller
             'nombreModelo' => $request->nombreModelo,
             'urlModelo' => $urlModelo
         ]);
-
+        
         return response()->json($modelo, 201);
     }
 
@@ -1277,126 +1276,70 @@ class SuperAdminController extends Controller
      *     )
      * )
      */
-    // public function EliminarModelo($idModelo)
-    // {
-    //     try {
-    //         // Begin transaction
-    //         DB::beginTransaction();
-            
-    //         // Obtener el modelo
-    //         $modelo = Modelo::findOrFail($idModelo);
-            
-    //         // Variable para almacenar la ruta del directorio
-    //         $directorioABorrar = null;
-            
-    //         // Primer intento: Verificar si el modelo tiene urlModelo
-    //         if (!empty($modelo->urlModelo)) {
-    //             $directorioABorrar = $modelo->urlModelo;
-    //         } 
-    //         // Segundo intento: Buscar la ruta en las imágenes relacionadas
-    //         else {
-    //             $primeraImagen = ImagenModelo::where('idModelo', $idModelo)
-    //                                         ->whereNotNull('urlImagen')
-    //                                         ->first();
-                                            
-    //             if ($primeraImagen) {
-    //                 // Remover 'public/' si existe y obtener el directorio padre
-    //                 $path = str_replace('public/', '', $primeraImagen->urlImagen);
-    //                 $directorioABorrar = dirname($path);
-    //             }
-    //         }
-            
-    //         // Eliminar todas las imágenes asociadas de la BD
-    //         ImagenModelo::where('idModelo', $idModelo)->delete();
-            
-    //         // Eliminar el directorio si se encontró una ruta válida
-    //         if ($directorioABorrar && Storage::disk('public')->exists($directorioABorrar)) {
-    //             Storage::disk('public')->deleteDirectory($directorioABorrar);
-    //         }
-            
-    //         // Eliminar el modelo
-    //         $modelo->delete();
-            
-    //         // Commit transaction
-    //         DB::commit();
-            
-    //         return response()->json([
-    //             'message' => 'Modelo y sus imágenes eliminados correctamente',
-    //             'directory_deleted' => $directorioABorrar ?? 'No se encontró directorio para borrar'
-    //         ]);
-            
-    //     } catch (\Exception $e) {
-    //         // Rollback in case of error
-    //         DB::rollBack();
-            
-    //         return response()->json([
-    //             'message' => 'Error al eliminar el modelo',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
     public function EliminarModelo($idModelo)
-{
-    try {
-        // Begin transaction
-        DB::beginTransaction();
-        
-        // Obtener el modelo
-        $modelo = Modelo::findOrFail($idModelo);
-        
-        // Variable para almacenar la ruta del directorio
-        $directorioABorrar = null;
-        
-        // Primer intento: Verificar si el modelo tiene urlModelo
-        if (!empty($modelo->urlModelo)) {
-            $directorioABorrar = $modelo->urlModelo;
-        } 
-        // Segundo intento: Buscar la ruta en las imágenes relacionadas
-        else {
-            $primeraImagen = ImagenModelo::where('idModelo', $idModelo)
-                                        ->whereNotNull('urlImagen')
-                                        ->first();
-                                        
-            if ($primeraImagen) {
-                // Remover 'public/' si existe y obtener el directorio padre
-                $path = str_replace('public/', '', $primeraImagen->urlImagen);
-                $directorioABorrar = dirname($path);
+    {
+        try {
+            // Begin transaction
+            DB::beginTransaction();
+            
+            // Obtener el modelo
+            $modelo = Modelo::findOrFail($idModelo);
+            
+            // Variable para almacenar la ruta del directorio
+            $directorioABorrar = null;
+            
+            // Primer intento: Verificar si el modelo tiene urlModelo
+            if (!empty($modelo->urlModelo)) {
+                $directorioABorrar = $modelo->urlModelo;
+            } 
+            // Segundo intento: Buscar la ruta en las imágenes relacionadas
+            else {
+                $primeraImagen = ImagenModelo::where('idModelo', $idModelo)
+                                            ->whereNotNull('urlImagen')
+                                            ->first();
+                                            
+                if ($primeraImagen) {
+                    // Remover 'public/' si existe y obtener el directorio padre
+                    $path = str_replace('public/', '', $primeraImagen->urlImagen);
+                    $directorioABorrar = dirname($path);
+                }
             }
+            
+            // Eliminar todas las imágenes asociadas de la BD
+            ImagenModelo::where('idModelo', $idModelo)->delete();
+            
+            // Eliminar todos los registros de stock asociados al modelo
+            Stock::where('idModelo', $idModelo)->delete();
+            
+            // Eliminar el directorio si se encontró una ruta válida
+            if ($directorioABorrar && Storage::disk('public')->exists($directorioABorrar)) {
+                Storage::disk('public')->deleteDirectory($directorioABorrar);
+            }
+            
+            // Marcar el modelo como "eliminado" en lugar de eliminarlo físicamente
+            $modelo->update([
+                'estado' => 'eliminado', // Cambiar el estado a "eliminado"
+                'urlModelo' => null,     // Eliminar la URL del modelo
+            ]);
+            
+            // Commit transaction
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Modelo marcado como eliminado, imágenes y stock relacionados eliminados correctamente',
+                'directory_deleted' => $directorioABorrar ?? 'No se encontró directorio para borrar'
+            ]);
+            
+        } catch (\Exception $e) {
+            // Rollback in case of error
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Error al eliminar el modelo',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        // Eliminar todas las imágenes asociadas de la BD
-        ImagenModelo::where('idModelo', $idModelo)->delete();
-        
-        // Eliminar todos los registros de stock asociados al modelo
-        Stock::where('idModelo', $idModelo)->delete();
-        
-        // Eliminar el directorio si se encontró una ruta válida
-        if ($directorioABorrar && Storage::disk('public')->exists($directorioABorrar)) {
-            Storage::disk('public')->deleteDirectory($directorioABorrar);
-        }
-        
-        // Eliminar el modelo
-        $modelo->delete();
-        
-        // Commit transaction
-        DB::commit();
-        
-        return response()->json([
-            'message' => 'Modelo, imágenes y stock relacionados eliminados correctamente',
-            'directory_deleted' => $directorioABorrar ?? 'No se encontró directorio para borrar'
-        ]);
-        
-    } catch (\Exception $e) {
-        // Rollback in case of error
-        DB::rollBack();
-        
-        return response()->json([
-            'message' => 'Error al eliminar el modelo',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     public function listarTallasAdmin()
     {
