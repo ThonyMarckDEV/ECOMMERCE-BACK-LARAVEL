@@ -325,21 +325,21 @@ class ClienteController extends Controller
         $sort = $request->input('sort');
         $perPage = $request->input('perPage', 8); // Número de productos por página, por defecto 8
 
-        // Construir la consulta para obtener los productos con relaciones
         $query = Producto::with([
             'categoria:idCategoria,nombreCategoria,estado', // Incluir el campo 'estado' de la categoría
             'modelos' => function($query) {
-                $query->with([
-                    'imagenes:idImagen,urlImagen,idModelo',
-                    'stock' => function($query) {
-                        $query->with('talla:idTalla,nombreTalla');
-                    }
-                ]);
+                $query->where('estado', 'activo') // Solo modelos con estado 'activo'
+                      ->with([
+                          'imagenes:idImagen,urlImagen,idModelo',
+                          'stock' => function($query) {
+                              $query->with('talla:idTalla,nombreTalla');
+                          }
+                      ]);
             },
             'ofertas' => function($query) {
                 $query->where('estado', 1) // Ofertas activas
-                    ->where('fechaInicio', '<=', now())
-                    ->where('fechaFin', '>=', now());
+                      ->where('fechaInicio', '<=', now())
+                      ->where('fechaFin', '>=', now());
             }
         ]);
 

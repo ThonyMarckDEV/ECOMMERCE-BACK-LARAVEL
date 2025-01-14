@@ -323,7 +323,6 @@ class SuperAdminController extends Controller
         return response()->json(['message' => 'Talla actualizada exitosamente', 'data' => $talla]);
     }
 
-
     public function listarProductos(Request $request)
     {
         // Obtener los parámetros de la solicitud
@@ -338,7 +337,8 @@ class SuperAdminController extends Controller
             'categoria:idCategoria,nombreCategoria',
             'caracteristicasProducto', // Cambiar a la relación correcta
             'modelos' => function($query) {
-                $query->with(['imagenes:idImagen,urlImagen,idModelo']);
+                $query->where('estado', 'activo') // Solo modelos con estado 'activo'
+                      ->with(['imagenes:idImagen,urlImagen,idModelo']);
             }
         ])->select('productos.*'); // Seleccionar todos los campos de productos
     
@@ -872,33 +872,38 @@ class SuperAdminController extends Controller
         // Obtener el nombre del modelo antes de la actualización
         $nombreModeloAntiguo = $modelo->nombreModelo;
         
-        // Actualizar los datos del modelo
+        // Obtener el nombre del producto asociado al modelo
+        $nombreProducto = $modelo->producto->nombreProducto;
+    
+        // Construir la nueva URL del modelo
+        $urlModelo = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $request->nombreModelo;
+    
+        // Actualizar los datos del modelo, incluyendo la nueva URL
         $modelo->update([
             'nombreModelo' => $request->nombreModelo,
+            'descripcion' => $request->descripcion,
+            'urlModelo' => $urlModelo, // Actualizar la URL del modelo
         ]);
-
+    
         // Registrar la acción de edición del modelo en el log
         $usuarioId = auth()->id(); // Obtener el ID del usuario autenticado
         $usuario = Usuario::find($usuarioId);
         $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
         $accion = "$nombreUsuario editó el modelo: $nombreModeloAntiguo a $modelo->nombreModelo";
         $this->agregarLog($usuarioId, $accion);
-
+    
         // Procesar nuevas imágenes
         if ($request->hasFile('nuevasImagenes')) {
             foreach ($request->file('nuevasImagenes') as $imagen) {
-                $nombreProducto = $modelo->producto->nombreProducto;
-                $nombreModelo = $modelo->nombreModelo;
-
                 $nombreArchivo = time() . '_' . $imagen->getClientOriginalName();
-                $ruta = "imagenes/productos/{$nombreProducto}/modelos/{$nombreModelo}/{$nombreArchivo}";
+                $ruta = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivo}";
                 
                 // Verificar si existe una imagen con el mismo nombre en la base de datos
                 $imagenExistente = ImagenModelo::where('urlImagen', $ruta)->first();
-
+    
                 if ($imagenExistente) {
                     Log::info("Imagen existente encontrada: {$imagenExistente->urlImagen}");
-
+    
                     // Intentar eliminar el archivo del almacenamiento
                     if (Storage::disk('public')->exists($imagenExistente->urlImagen)) {
                         Storage::disk('public')->delete($imagenExistente->urlImagen);
@@ -911,11 +916,11 @@ class SuperAdminController extends Controller
                     $imagenExistente->delete();
                     Log::info("Registro eliminado de la base de datos: {$imagenExistente->idImagen}");
                 }
-
+    
                 // Guardar la nueva imagen
-                $imagen->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$nombreModelo}", $nombreArchivo, 'public');
+                $imagen->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivo, 'public');
                 Log::info("Nueva imagen guardada en: {$ruta}");
-
+    
                 // Crear el registro en la base de datos
                 ImagenModelo::create([
                     'urlImagen' => $ruta,
@@ -924,18 +929,18 @@ class SuperAdminController extends Controller
                 ]);
             }
         }
-
+    
         // Reemplazo de imágenes existentes
         if ($request->has('idImagenesReemplazadas')) {
             foreach ($request->idImagenesReemplazadas as $index => $idImagen) {
                 $imagenModelo = ImagenModelo::findOrFail($idImagen);
                 $rutaAntigua = $imagenModelo->urlImagen;
-
+    
                 Log::info("Iniciando reemplazo de imagen: {$rutaAntigua}");
-
+    
                 if ($request->hasFile("imagenesReemplazadas.{$index}")) {
                     $imagenReemplazada = $request->file("imagenesReemplazadas.{$index}");
-
+    
                     // Eliminar la imagen anterior si existe
                     if (Storage::disk('public')->exists($rutaAntigua)) {
                         Storage::disk('public')->delete($rutaAntigua);
@@ -943,17 +948,14 @@ class SuperAdminController extends Controller
                     } else {
                         Log::warning("No se encontró la imagen a reemplazar: {$rutaAntigua}");
                     }
-
-                    $nombreProducto = $modelo->producto->nombreProducto;
-                    $nombreModelo = $modelo->nombreModelo;
-
+    
                     $nombreArchivoNuevo = time() . '_' . $imagenReemplazada->getClientOriginalName();
-                    $rutaNueva = "imagenes/productos/{$nombreProducto}/modelos/{$nombreModelo}/{$nombreArchivoNuevo}";
-
+                    $rutaNueva = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivoNuevo}";
+    
                     // Guardar la nueva imagen
-                    $imagenReemplazada->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$nombreModelo}", $nombreArchivoNuevo, 'public');
+                    $imagenReemplazada->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivoNuevo, 'public');
                     Log::info("Nueva imagen guardada en: {$rutaNueva}");
-
+    
                     // Actualizar la nueva ruta en la base de datos
                     $imagenModelo->update([
                         'urlImagen' => $rutaNueva,
@@ -962,7 +964,7 @@ class SuperAdminController extends Controller
                 }
             }
         }
-
+    
         return response()->json(['message' => 'Modelo e imágenes actualizados correctamente']);
     }
 
