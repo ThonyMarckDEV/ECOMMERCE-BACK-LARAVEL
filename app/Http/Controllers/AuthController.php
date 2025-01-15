@@ -978,13 +978,13 @@ class AuthController extends Controller
         $request->validate([
             'idUsuario' => 'required|integer',
         ]);
-
+    
         $idUsuario = $request->input('idUsuario');
         $token = $request->bearerToken(); // Obtener el token JWT del encabezado Authorization
-
+    
         // Buscar el registro de actividad del usuario en la base de datos
         $actividadUsuario = ActividadUsuario::where('idUsuario', $idUsuario)->first();
-
+    
         // Si no hay un registro de actividad, devolver un error
         if (!$actividadUsuario) {
             return response()->json([
@@ -992,22 +992,21 @@ class AuthController extends Controller
                 'message' => 'Usuario no encontrado'
             ], 404);
         }
-
-        // // Verificar si el token en la base de datos es diferente al token actual
-        // if ($actividadUsuario->jwt !== $token) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'El token no coincide con el almacenado'
-        //     ], 403);
-        // }
-
+    
+        // Verificar si el token proporcionado coincide con el token almacenado en la base de datos
+        if ($actividadUsuario->jwt !== $token) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Token inválido o revocado'
+            ], 401); // 401 Unauthorized
+        }
+    
         // Si el token es válido, devolver el estado y el token actual
         return response()->json([
             'status' => 'success',
             'token' => $actividadUsuario->jwt  // Devuelves el token almacenado en la base de datos
         ]);
     }
-
 
     /**
      * @OA\Post(
