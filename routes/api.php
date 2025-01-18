@@ -36,7 +36,7 @@ use App\Http\Controllers\SuperAdminController;
 
         Route::get('/productos/{id}/caracteristicas', [ClienteController::class, 'obtenerCaracteristicas']);
 
-        Route::get('/obtenerPrecioMaximo', [ClienteController::class, 'obtenerPrecioMaximo']);
+        Route::get(uri: '/obtenerPrecioMaximo', [ClienteController::class, 'obtenerPrecioMaximo']);
 
         Route::get('/listarCategorias', [ClienteController::class, 'listarCategorias']);
 

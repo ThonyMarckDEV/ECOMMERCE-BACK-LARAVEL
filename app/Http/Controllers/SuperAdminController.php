@@ -891,219 +891,117 @@ class SuperAdminController extends Controller
      *     )
      * )
      */
-    // public function editarModeloYImagen(Request $request, $idModelo)
-    // {
-    //     $modelo = Modelo::findOrFail($idModelo);
-        
-    //     // Obtener el nombre del modelo antes de la actualización
-    //     $nombreModeloAntiguo = $modelo->nombreModelo;
-        
-    //     // Obtener el nombre del producto asociado al modelo
-    //     $nombreProducto = $modelo->producto->nombreProducto;
-    
-    //     // Construir la nueva URL del modelo
-    //     $urlModelo = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $request->nombreModelo;
-    
-    //     // Actualizar los datos del modelo, incluyendo la nueva URL
-    //     $modelo->update([
-    //         'nombreModelo' => $request->nombreModelo,
-    //         'descripcion' => $request->descripcion,
-    //         'urlModelo' => $urlModelo, // Actualizar la URL del modelo
-    //     ]);
-    
-    //     // Registrar la acción de edición del modelo en el log
-    //     $usuarioId = auth()->id(); // Obtener el ID del usuario autenticado
-    //     $usuario = Usuario::find($usuarioId);
-    //     $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
-    //     $accion = "$nombreUsuario editó el modelo: $nombreModeloAntiguo a $modelo->nombreModelo";
-    //     $this->agregarLog($usuarioId, $accion);
-    
-    //     // Procesar nuevas imágenes
-    //     if ($request->hasFile('nuevasImagenes')) {
-    //         foreach ($request->file('nuevasImagenes') as $imagen) {
-    //             $nombreArchivo = time() . '_' . $imagen->getClientOriginalName();
-    //             $ruta = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivo}";
-                
-    //             // Verificar si existe una imagen con el mismo nombre en la base de datos
-    //             $imagenExistente = ImagenModelo::where('urlImagen', $ruta)->first();
-    
-    //             if ($imagenExistente) {
-    //                 Log::info("Imagen existente encontrada: {$imagenExistente->urlImagen}");
-    
-    //                 // Intentar eliminar el archivo del almacenamiento
-    //                 if (Storage::disk('public')->exists($imagenExistente->urlImagen)) {
-    //                     Storage::disk('public')->delete($imagenExistente->urlImagen);
-    //                     Log::info("Imagen eliminada: {$imagenExistente->urlImagen}");
-    //                 } else {
-    //                     Log::warning("La imagen no existe en el almacenamiento: {$imagenExistente->urlImagen}");
-    //                 }
-                    
-    //                 // Eliminar el registro de la base de datos
-    //                 $imagenExistente->delete();
-    //                 Log::info("Registro eliminado de la base de datos: {$imagenExistente->idImagen}");
-    //             }
-    
-    //             // Guardar la nueva imagen
-    //             $imagen->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivo, 'public');
-    //             Log::info("Nueva imagen guardada en: {$ruta}");
-    
-    //             // Crear el registro en la base de datos
-    //             ImagenModelo::create([
-    //                 'urlImagen' => $ruta,
-    //                 'idModelo' => $modelo->idModelo,
-    //                 'descripcion' => 'Nueva imagen añadida',
-    //             ]);
-    //         }
-    //     }
-    
-    //     // Reemplazo de imágenes existentes
-    //     if ($request->has('idImagenesReemplazadas')) {
-    //         foreach ($request->idImagenesReemplazadas as $index => $idImagen) {
-    //             $imagenModelo = ImagenModelo::findOrFail($idImagen);
-    //             $rutaAntigua = $imagenModelo->urlImagen;
-    
-    //             Log::info("Iniciando reemplazo de imagen: {$rutaAntigua}");
-    
-    //             if ($request->hasFile("imagenesReemplazadas.{$index}")) {
-    //                 $imagenReemplazada = $request->file("imagenesReemplazadas.{$index}");
-    
-    //                 // Eliminar la imagen anterior si existe
-    //                 if (Storage::disk('public')->exists($rutaAntigua)) {
-    //                     Storage::disk('public')->delete($rutaAntigua);
-    //                     Log::info("Imagen reemplazada eliminada: {$rutaAntigua}");
-    //                 } else {
-    //                     Log::warning("No se encontró la imagen a reemplazar: {$rutaAntigua}");
-    //                 }
-    
-    //                 $nombreArchivoNuevo = time() . '_' . $imagenReemplazada->getClientOriginalName();
-    //                 $rutaNueva = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivoNuevo}";
-    
-    //                 // Guardar la nueva imagen
-    //                 $imagenReemplazada->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivoNuevo, 'public');
-    //                 Log::info("Nueva imagen guardada en: {$rutaNueva}");
-    
-    //                 // Actualizar la nueva ruta en la base de datos
-    //                 $imagenModelo->update([
-    //                     'urlImagen' => $rutaNueva,
-    //                 ]);
-    //                 Log::info("Ruta actualizada en la base de datos: {$rutaNueva}");
-    //             }
-    //         }
-    //     }
-    
-    //     return response()->json(['message' => 'Modelo e imágenes actualizados correctamente']);
-    // }
 
     public function editarModeloYImagen(Request $request, $idModelo)
-{
-    $modelo = Modelo::findOrFail($idModelo);
-    $nombreModeloAntiguo = $modelo->nombreModelo;
-    $nombreProducto = $modelo->producto->nombreProducto;
+    {
+        $modelo = Modelo::findOrFail($idModelo);
+        $nombreModeloAntiguo = $modelo->nombreModelo;
+        $nombreProducto = $modelo->producto->nombreProducto;
 
-    $urlModelo = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $request->nombreModelo;
+        $urlModelo = 'imagenes/productos/' . $nombreProducto . '/modelos/' . $request->nombreModelo;
 
-    $modelo->update([
-        'nombreModelo' => $request->nombreModelo,
-        'descripcion' => $request->descripcion,
-        'urlModelo' => $urlModelo,
-    ]);
+        $modelo->update([
+            'nombreModelo' => $request->nombreModelo,
+            'descripcion' => $request->descripcion,
+            'urlModelo' => $urlModelo,
+        ]);
 
-    // Registrar la acción de edición
-    $usuarioId = auth()->id();
-    $usuario = Usuario::find($usuarioId);
-    $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
-    $accion = "$nombreUsuario editó el modelo: $nombreModeloAntiguo a $modelo->nombreModelo";
-    $this->agregarLog($usuarioId, $accion);
+        // Registrar la acción de edición
+        $usuarioId = auth()->id();
+        $usuario = Usuario::find($usuarioId);
+        $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
+        $accion = "$nombreUsuario editó el modelo: $nombreModeloAntiguo a $modelo->nombreModelo";
+        $this->agregarLog($usuarioId, $accion);
 
-    // Función helper para sanitizar nombres de archivo
-    $sanitizarNombre = function($nombreOriginal) {
-        // 1. Convertir a minúsculas
-        $nombreLimpio = strtolower($nombreOriginal);
-        // 2. Reemplazar + por espacios
-        $nombreLimpio = str_replace('+', ' ', $nombreLimpio);
-        // 3. Eliminar números y caracteres especiales del inicio
-        $nombreLimpio = preg_replace('/^[0-9_]+/', '', $nombreLimpio);
-        // 4. Eliminar todos los caracteres especiales
-        $nombreLimpio = preg_replace('/[^a-z0-9\s]/', '', $nombreLimpio);
-        // 5. Reemplazar espacios múltiples por uno solo
-        $nombreLimpio = preg_replace('/\s+/', ' ', $nombreLimpio);
-        // 6. Trim espacios
-        $nombreLimpio = trim($nombreLimpio);
-        // 7. Reemplazar espacios por guiones
-        $nombreLimpio = str_replace(' ', '-', $nombreLimpio);
-        
-        return empty($nombreLimpio) ? 'imagen' : $nombreLimpio;
-    };
-
-    // Procesar nuevas imágenes
-    if ($request->hasFile('nuevasImagenes')) {
-        foreach ($request->file('nuevasImagenes') as $imagen) {
-            $extension = strtolower($imagen->getClientOriginalExtension());
-            $nombreOriginal = pathinfo($imagen->getClientOriginalName(), PATHINFO_FILENAME);
-            $nombreLimpio = $sanitizarNombre($nombreOriginal);
-            $nombreArchivo = $nombreLimpio . '-' . time() . '.' . $extension;
+        // Función helper para sanitizar nombres de archivo
+        $sanitizarNombre = function($nombreOriginal) {
+            // 1. Convertir a minúsculas
+            $nombreLimpio = strtolower($nombreOriginal);
+            // 2. Reemplazar + por espacios
+            $nombreLimpio = str_replace('+', ' ', $nombreLimpio);
+            // 3. Eliminar números y caracteres especiales del inicio
+            $nombreLimpio = preg_replace('/^[0-9_]+/', '', $nombreLimpio);
+            // 4. Eliminar todos los caracteres especiales
+            $nombreLimpio = preg_replace('/[^a-z0-9\s]/', '', $nombreLimpio);
+            // 5. Reemplazar espacios múltiples por uno solo
+            $nombreLimpio = preg_replace('/\s+/', ' ', $nombreLimpio);
+            // 6. Trim espacios
+            $nombreLimpio = trim($nombreLimpio);
+            // 7. Reemplazar espacios por guiones
+            $nombreLimpio = str_replace(' ', '-', $nombreLimpio);
             
-            $ruta = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivo}";
-            
-            // Verificar si existe una imagen con el mismo nombre
-            $imagenExistente = ImagenModelo::where('urlImagen', $ruta)->first();
+            return empty($nombreLimpio) ? 'imagen' : $nombreLimpio;
+        };
 
-            if ($imagenExistente) {
-                if (Storage::disk('public')->exists($imagenExistente->urlImagen)) {
-                    Storage::disk('public')->delete($imagenExistente->urlImagen);
-                }
-                $imagenExistente->delete();
-            }
-
-            // Guardar la nueva imagen
-            $imagen->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivo, 'public');
-
-            ImagenModelo::create([
-                'urlImagen' => $ruta,
-                'idModelo' => $modelo->idModelo,
-                'descripcion' => 'Nueva imagen añadida',
-            ]);
-
-            Log::info("Imagen procesada - Original: " . $imagen->getClientOriginalName() . " -> Nuevo: " . $nombreArchivo);
-        }
-    }
-
-    // Reemplazo de imágenes existentes
-    if ($request->has('idImagenesReemplazadas')) {
-        foreach ($request->idImagenesReemplazadas as $index => $idImagen) {
-            $imagenModelo = ImagenModelo::findOrFail($idImagen);
-            $rutaAntigua = $imagenModelo->urlImagen;
-
-            if ($request->hasFile("imagenesReemplazadas.{$index}")) {
-                $imagenReemplazada = $request->file("imagenesReemplazadas.{$index}");
-                
-                // Sanitizar nombre del archivo reemplazado
-                $extension = strtolower($imagenReemplazada->getClientOriginalExtension());
-                $nombreOriginal = pathinfo($imagenReemplazada->getClientOriginalName(), PATHINFO_FILENAME);
+        // Procesar nuevas imágenes
+        if ($request->hasFile('nuevasImagenes')) {
+            foreach ($request->file('nuevasImagenes') as $imagen) {
+                $extension = strtolower($imagen->getClientOriginalExtension());
+                $nombreOriginal = pathinfo($imagen->getClientOriginalName(), PATHINFO_FILENAME);
                 $nombreLimpio = $sanitizarNombre($nombreOriginal);
-                $nombreArchivoNuevo = $nombreLimpio . '-' . time() . '.' . $extension;
+                $nombreArchivo = $nombreLimpio . '-' . time() . '.' . $extension;
+                
+                $ruta = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivo}";
+                
+                // Verificar si existe una imagen con el mismo nombre
+                $imagenExistente = ImagenModelo::where('urlImagen', $ruta)->first();
 
-                if (Storage::disk('public')->exists($rutaAntigua)) {
-                    Storage::disk('public')->delete($rutaAntigua);
+                if ($imagenExistente) {
+                    if (Storage::disk('public')->exists($imagenExistente->urlImagen)) {
+                        Storage::disk('public')->delete($imagenExistente->urlImagen);
+                    }
+                    $imagenExistente->delete();
                 }
 
-                $rutaNueva = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivoNuevo}";
+                // Guardar la nueva imagen
+                $imagen->storeAs("imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}", $nombreArchivo, 'public');
 
-                $imagenReemplazada->storeAs(
-                    "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}",
-                    $nombreArchivoNuevo,
-                    'public'
-                );
+                ImagenModelo::create([
+                    'urlImagen' => $ruta,
+                    'idModelo' => $modelo->idModelo,
+                    'descripcion' => 'Nueva imagen añadida',
+                ]);
 
-                $imagenModelo->update(['urlImagen' => $rutaNueva]);
-                
-                Log::info("Imagen reemplazada - Original: " . $imagenReemplazada->getClientOriginalName() . " -> Nuevo: " . $nombreArchivoNuevo);
+                Log::info("Imagen procesada - Original: " . $imagen->getClientOriginalName() . " -> Nuevo: " . $nombreArchivo);
             }
         }
-    }
 
-    return response()->json(['message' => 'Modelo e imágenes actualizados correctamente']);
-}
+        // Reemplazo de imágenes existentes
+        if ($request->has('idImagenesReemplazadas')) {
+            foreach ($request->idImagenesReemplazadas as $index => $idImagen) {
+                $imagenModelo = ImagenModelo::findOrFail($idImagen);
+                $rutaAntigua = $imagenModelo->urlImagen;
+
+                if ($request->hasFile("imagenesReemplazadas.{$index}")) {
+                    $imagenReemplazada = $request->file("imagenesReemplazadas.{$index}");
+                    
+                    // Sanitizar nombre del archivo reemplazado
+                    $extension = strtolower($imagenReemplazada->getClientOriginalExtension());
+                    $nombreOriginal = pathinfo($imagenReemplazada->getClientOriginalName(), PATHINFO_FILENAME);
+                    $nombreLimpio = $sanitizarNombre($nombreOriginal);
+                    $nombreArchivoNuevo = $nombreLimpio . '-' . time() . '.' . $extension;
+
+                    if (Storage::disk('public')->exists($rutaAntigua)) {
+                        Storage::disk('public')->delete($rutaAntigua);
+                    }
+
+                    $rutaNueva = "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}/{$nombreArchivoNuevo}";
+
+                    $imagenReemplazada->storeAs(
+                        "imagenes/productos/{$nombreProducto}/modelos/{$modelo->nombreModelo}",
+                        $nombreArchivoNuevo,
+                        'public'
+                    );
+
+                    $imagenModelo->update(['urlImagen' => $rutaNueva]);
+                    
+                    Log::info("Imagen reemplazada - Original: " . $imagenReemplazada->getClientOriginalName() . " -> Nuevo: " . $nombreArchivoNuevo);
+                }
+            }
+        }
+
+        return response()->json(['message' => 'Modelo e imágenes actualizados correctamente']);
+    }
 
         /**
      * @OA\Delete(
