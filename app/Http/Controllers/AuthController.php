@@ -31,7 +31,7 @@ use Laravel\Socialite\Facades\Socialite;
 *    description="API DOCUMENTATION"
 * )
 *
-* @OA\Server(url="http://localhost:8000")
+* @OA\Server(url="https://ecommerceback.thonymarckdev.online")
 */
 class AuthController extends Controller
 {
