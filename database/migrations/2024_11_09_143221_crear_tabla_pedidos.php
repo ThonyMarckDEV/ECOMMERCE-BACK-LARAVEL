@@ -17,10 +17,12 @@ class CrearTablaPedidos extends Migration
             $table->string('departamento');
             $table->string('distrito');
             $table->string('provincia');
-            $table->string('direccion', 255); // Nueva columna para la dirección
+            $table->string('direccion', 255); 
             $table->decimal('latitud', 10, 8);
             $table->decimal('longitud', 11, 8);
-            $table->timestamp('fecha_pedido')->nullable()->default(DB::raw('CURRENT_TIMESTAMP')); // Nueva columna para fecha del pedido
+            $table->timestamp('fecha_pedido')->nullable()->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->string('tipo_comprobante',255)->nullable();
+            $table->string('ruc', 11)->nullable();
 
             // Claves foráneas
             $table->foreign('idUsuario')->references('idUsuario')->on('usuarios')->onDelete('cascade');

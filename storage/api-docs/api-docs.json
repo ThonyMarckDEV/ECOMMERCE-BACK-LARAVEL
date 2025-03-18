@@ -7,7 +7,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8000"
+            "url": "https://ecommerceback.thonymarckdev.online"
         }
     ],
     "paths": {
@@ -17,20 +17,27 @@
                     "AUTH CONTROLLER"
                 ],
                 "summary": "Login de usuario",
-                "description": "Login",
-                "operationId": "a3b306d14572d1f4bd6c064b3233e7b8",
+                "description": "Permite a los usuarios autenticarse en el sistema y obtener un token JWT.",
+                "operationId": "login",
                 "requestBody": {
+                    "description": "Credenciales del usuario",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "correo",
+                                    "password"
+                                ],
                                 "properties": {
                                     "correo": {
                                         "type": "string",
+                                        "format": "email",
                                         "example": "usuario@dominio.com"
                                     },
                                     "password": {
                                         "type": "string",
+                                        "format": "password",
                                         "example": "contraseña123"
                                     }
                                 },
@@ -56,14 +63,85 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Datos de entrada inválidos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "El campo correo es requerido."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
                     "401": {
-                        "description": "Credenciales inválidas"
+                        "description": "Credenciales inválidas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Credenciales inválidas"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Usuario inactivo",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Usuario inactivo. Por favor, contacte al administrador."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Usuario no encontrado"
+                        "description": "Usuario no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Usuario no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "500": {
-                        "description": "Error al generar el token"
+                        "description": "Error al generar el token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No se pudo crear el token"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -327,6 +405,7 @@
                 "description": "Este endpoint se utiliza para cerrar sesión de un usuario y revocar su token JWT.",
                 "operationId": "logout",
                 "requestBody": {
+                    "description": "ID del usuario que desea cerrar sesión",
                     "required": true,
                     "content": {
                         "application/json": {
@@ -337,7 +416,8 @@
                                 "properties": {
                                     "idUsuario": {
                                         "description": "ID del usuario que desea cerrar sesión.",
-                                        "type": "integer"
+                                        "type": "integer",
+                                        "example": 1
                                     }
                                 },
                                 "type": "object"
@@ -347,7 +427,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Usuario deslogueado correctamente.",
+                        "description": "Usuario deslogueado correctamente",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -366,8 +446,48 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Datos de entrada inválidos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El campo idUsuario es requerido."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No autorizado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "No se encontró el usuario.",
+                        "description": "Usuario no encontrado",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -387,12 +507,16 @@
                         }
                     },
                     "500": {
-                        "description": "Error al desloguear al usuario.",
+                        "description": "Error al desloguear al usuario",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "error": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
                                             "type": "string",
                                             "example": "No se pudo desloguear al usuario."
                                         }
@@ -2861,6 +2985,1043 @@
                     }
                 }
             }
+        },
+        "/api/agregarProducto": {
+            "post": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Agregar un nuevo producto con modelos e imágenes",
+                "description": "Permite a un superadministrador agregar un nuevo producto, incluyendo sus modelos e imágenes asociadas. Se validan los datos de entrada y se registra la acción en el log del sistema.",
+                "operationId": "agregarProducto",
+                "requestBody": {
+                    "description": "Datos del producto y sus modelos",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "nombreProducto",
+                                    "estado",
+                                    "idCategoria",
+                                    "modelos"
+                                ],
+                                "properties": {
+                                    "nombreProducto": {
+                                        "type": "string",
+                                        "example": "Producto Ejemplo"
+                                    },
+                                    "descripcion": {
+                                        "type": "string",
+                                        "example": "Descripción del producto",
+                                        "nullable": true
+                                    },
+                                    "estado": {
+                                        "type": "string",
+                                        "example": "activo"
+                                    },
+                                    "idCategoria": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "modelos": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "nombreModelo",
+                                                "imagen"
+                                            ],
+                                            "properties": {
+                                                "nombreModelo": {
+                                                    "type": "string",
+                                                    "example": "Modelo Ejemplo"
+                                                },
+                                                "imagen": {
+                                                    "description": "Imagen del modelo (formato: jpg, png, etc.)",
+                                                    "type": "string",
+                                                    "format": "binary"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Producto agregado exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Producto agregado correctamente"
+                                        },
+                                        "producto": {
+                                            "properties": {
+                                                "idProducto": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "nombreProducto": {
+                                                    "type": "string",
+                                                    "example": "Producto Ejemplo"
+                                                },
+                                                "descripcion": {
+                                                    "type": "string",
+                                                    "example": "Descripción del producto"
+                                                },
+                                                "estado": {
+                                                    "type": "string",
+                                                    "example": "activo"
+                                                },
+                                                "idCategoria": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "nombreProducto": [
+                                                    "El campo nombreProducto es obligatorio."
+                                                ],
+                                                "modelos.0.nombreModelo": [
+                                                    "El campo nombreModelo es obligatorio."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al agregar el producto"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/actualizarProducto/{idProducto}": {
+            "put": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Actualizar un producto existente",
+                "description": "Permite a un superadministrador actualizar los datos de un producto existente, incluyendo su nombre y descripción. Además, registra la acción en el log del sistema.",
+                "operationId": "actualizarProducto",
+                "parameters": [
+                    {
+                        "name": "idProducto",
+                        "in": "path",
+                        "description": "ID del producto que se desea actualizar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos del producto que se desean actualizar",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombreProducto"
+                                ],
+                                "properties": {
+                                    "nombreProducto": {
+                                        "type": "string",
+                                        "example": "Producto Actualizado"
+                                    },
+                                    "descripcion": {
+                                        "type": "string",
+                                        "example": "Descripción actualizada",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Producto actualizado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Producto actualizado correctamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Producto no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al actualizar el producto"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/editarModeloyImagen/{idModelo}": {
+            "post": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Editar un modelo y sus imágenes",
+                "description": "Permite a un superadministrador editar un modelo existente, incluyendo su nombre, descripción y la gestión de imágenes (añadir nuevas o reemplazar existentes).",
+                "operationId": "editarModeloYImagen",
+                "parameters": [
+                    {
+                        "name": "idModelo",
+                        "in": "path",
+                        "description": "ID del modelo que se desea editar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Datos del modelo y sus imágenes",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "nombreModelo"
+                                ],
+                                "properties": {
+                                    "nombreModelo": {
+                                        "type": "string",
+                                        "example": "Modelo Actualizado"
+                                    },
+                                    "descripcion": {
+                                        "type": "string",
+                                        "example": "Descripción actualizada",
+                                        "nullable": true
+                                    },
+                                    "nuevasImagenes": {
+                                        "type": "array",
+                                        "items": {
+                                            "description": "Nuevas imágenes para el modelo",
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    },
+                                    "idImagenesReemplazadas": {
+                                        "description": "IDs de las imágenes existentes que se desean reemplazar",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "imagenesReemplazadas": {
+                                        "type": "array",
+                                        "items": {
+                                            "description": "Nuevas imágenes para reemplazar las existentes",
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Modelo e imágenes actualizados correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Modelo e imágenes actualizados correctamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Modelo no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Modelo no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "nombreModelo": [
+                                                    "El campo nombreModelo es obligatorio."
+                                                ],
+                                                "nuevasImagenes.0": [
+                                                    "El archivo debe ser una imagen válida."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al actualizar el modelo e imágenes"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/eliminarImagenModelo/{idImagen}": {
+            "delete": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Eliminar una imagen de un modelo",
+                "description": "Permite a un superadministrador eliminar una imagen asociada a un modelo, tanto físicamente del almacenamiento como de la base de datos. Además, registra la acción en el log del sistema.",
+                "operationId": "eliminarImagenModelo",
+                "parameters": [
+                    {
+                        "name": "idImagen",
+                        "in": "path",
+                        "description": "ID de la imagen que se desea eliminar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Imagen eliminada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Imagen eliminada correctamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Imagen no encontrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Imagen no encontrada"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al eliminar la imagen"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/cambiarEstadoProducto/{id}": {
+            "put": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Cambiar el estado de un producto",
+                "description": "Permite a un superadministrador cambiar el estado de un producto. Además, registra la acción en el log del sistema.",
+                "operationId": "cambiarEstadoProducto",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del producto cuyo estado se desea cambiar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Nuevo estado del producto",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "estado"
+                                ],
+                                "properties": {
+                                    "estado": {
+                                        "type": "string",
+                                        "example": "activo"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Estado actualizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Producto no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "estado": [
+                                                    "El campo estado es obligatorio."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al cambiar el estado del producto"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/agregarModelo": {
+            "post": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Agregar un nuevo modelo a un producto",
+                "description": "Permite a un superadministrador agregar un nuevo modelo a un producto existente. Se valida que el producto exista y se genera una ruta para el modelo basada en el nombre del producto.",
+                "operationId": "agregarModelo",
+                "requestBody": {
+                    "description": "Datos del modelo a agregar",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "idProducto",
+                                    "nombreModelo"
+                                ],
+                                "properties": {
+                                    "idProducto": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "nombreModelo": {
+                                        "type": "string",
+                                        "example": "Modelo Ejemplo"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Modelo agregado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "idModelo": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "idProducto": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "nombreModelo": {
+                                            "type": "string",
+                                            "example": "Modelo Ejemplo"
+                                        },
+                                        "urlModelo": {
+                                            "type": "string",
+                                            "example": "imagenes/productos/Producto Ejemplo/modelos/Modelo Ejemplo"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "idProducto": [
+                                                    "El campo idProducto es obligatorio."
+                                                ],
+                                                "nombreModelo": [
+                                                    "El campo nombreModelo es obligatorio."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Producto no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Producto no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al agregar el modelo"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/EliminarModelo/{idModelo}": {
+            "delete": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Eliminar un modelo y sus imágenes asociadas",
+                "description": "Permite a un superadministrador eliminar un modelo y todas sus imágenes asociadas, tanto de la base de datos como del almacenamiento. Además, elimina el directorio donde se almacenaban las imágenes.",
+                "operationId": "EliminarModelo",
+                "parameters": [
+                    {
+                        "name": "idModelo",
+                        "in": "path",
+                        "description": "ID del modelo que se desea eliminar",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Modelo y sus imágenes eliminados correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Modelo y sus imágenes eliminados correctamente"
+                                        },
+                                        "directory_deleted": {
+                                            "type": "string",
+                                            "example": "imagenes/productos/Producto Ejemplo/modelos/Modelo Ejemplo"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Modelo no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Modelo no encontrado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error al eliminar el modelo"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Mensaje de error detallado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/categoriasproductos": {
+            "get": {
+                "tags": [
+                    "SUPERADMIN CONTROLLER"
+                ],
+                "summary": "Listar categorías de productos activas",
+                "description": "Permite a un superadministrador obtener una lista de todas las categorías de productos con estado 'activo'.",
+                "operationId": "listarCategoriasProductos",
+                "responses": {
+                    "200": {
+                        "description": "Lista de categorías obtenida exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "idCategoria": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "nombreCategoria": {
+                                                "type": "string",
+                                                "example": "Electrónica"
+                                            },
+                                            "estado": {
+                                                "type": "string",
+                                                "example": "activo"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error interno del servidor"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -2881,6 +4042,10 @@
         {
             "name": "CLIENTE CONTROLLER",
             "description": "CLIENTE CONTROLLER"
+        },
+        {
+            "name": "SUPERADMIN CONTROLLER",
+            "description": "SUPERADMIN CONTROLLER"
         }
     ]
 }

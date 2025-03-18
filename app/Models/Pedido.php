@@ -25,7 +25,9 @@ class Pedido extends Model
         'direccion',
         'latitud',
         'longitud',
-        'fecha_pedido', // Asigna la fecha y hora actual
+        'fecha_pedido',
+        'tipo_comprobante',
+        'ruc',
     ];
 
      // Relación con el modelo Usuario

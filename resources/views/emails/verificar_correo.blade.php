@@ -5,59 +5,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verificación de Correo</title>
     <style>
-        body, p, h1, .footer {
-            color: #ffffff !important; /* Asegura que todo el texto sea blanco */
-            font-family: sans-serif;
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
         body {
-            background-color: #000000;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f8f8;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
         }
+
+        /* Container and Layout */
         .container {
-            max-width: 672px;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 24px;
-            background-color: #2d2d2d;
+            background-color: #ffffff;
+            padding: 40px;
             border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
+
+        /* Typography */
         h1 {
             font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-        p {
-            font-size: 18px;
-            margin-bottom: 16px;
-        }
-        a {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #34d399; /* Verde para el botón */
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 18px;
-            margin-bottom: 16px;
-        }
-        .footer {
-            font-size: 12px;
+            font-weight: 300;
+            color: #1a1a1a;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             text-align: center;
-            margin-top: 24px;
+        }
+
+        h3 {
+            font-size: 18px;
+            color: #1a1a1a;
+            margin: 25px 0 15px 0;
+            font-weight: 500;
+        }
+
+        p {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #4a4a4a;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: #f3f4f6;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #666;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eaeaea;
+            color: #333;
+            font-size: 14px;
+        }
+
+        td.price {
+            font-family: 'Monaco', monospace;
+            color: #1a1a1a;
+        }
+
+        /* Buttons and Links */
+        .button, a {
+            display: inline-block;
+            background-color: #1a1a1a;
+            color: #ffffff !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 14px;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover, a:hover {
+            background-color: #333;
+            transform: translateY(-1px);
+        }
+
+        /* Utility Classes */
+        .highlight {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eaeaea;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Logo and Branding */
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: 2px;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            td, th {
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+      <!-- Template for Email Verification -->
+      <div class="container">
+        <div class="logo">ECOMMERCE STORE</div>
         <h1>¡Hola, {{ $user->nombres }}!</h1>
         <p>Gracias por registrarte en nuestra plataforma. Por favor, haz clic en el botón de abajo para verificar tu correo electrónico:</p>
-        <a href="{{ $url }}">
-            Verificar correo
-        </a>
+        <a href="{{ $url }}" class="button">Verificar correo</a>
         <p>Si no solicitaste esta verificación, ignora este correo.</p>
-
-        <p class="footer">Saludos,<br>El equipo de ECOMMERCE</p>
+        <p class="footer">Saludos,<br>El equipo de ECOMMERCE STORE</p>
     </div>
 
 </body>

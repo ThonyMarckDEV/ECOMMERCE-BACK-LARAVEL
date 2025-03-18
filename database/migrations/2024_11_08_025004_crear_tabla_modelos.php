@@ -15,7 +15,7 @@ class CrearTablaModelos extends Migration
             $table->unsignedBigInteger('idProducto'); // Definimos manualmente la columna
             $table->foreign('idProducto')->references('idProducto')->on('productos'); // Referencia explícita a 'idProducto'
             $table->string('nombreModelo');
-            $table->string('descripcion')->nullable();
+            $table->string('urlModelo')->nullable();
         });
     }
 

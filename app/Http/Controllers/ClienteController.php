@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TipoPago;
 use App\Models\Usuario;
 use App\Models\Carrito;
 use App\Models\CarritoDetalle;
@@ -26,9 +27,14 @@ use App\Mail\NotificacionDireccionAgregada;
 use App\Mail\NotificacionDireccionEliminada;
 use App\Mail\NotificacionDireccionPredeterminada;
 use App\Mail\CodigoVerificacion;
+use App\Models\CaracteristicaProducto;
+use App\Models\Categoria;
+use App\Models\DetalleDireccionPedido;
+use App\Models\Oferta;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use GuzzleHttp\Client;
 
 class ClienteController extends Controller
 {
@@ -280,6 +286,33 @@ class ClienteController extends Controller
         return response()->json(['success' => true, 'message' => 'Datos actualizados correctamente']);
     }
 
+    public function validateDNI($numero)
+    {
+        // Verificar que el DNI no sea vacío
+        if (empty($numero)) {
+            return response()->json(['success' => false, 'message' => 'El DNI no puede estar vacío'], 400);
+        }
+    
+        // Verificar que el DNI tenga exactamente 8 caracteres
+        if (strlen($numero) !== 8) {
+            return response()->json(['success' => false, 'message' => 'El DNI debe tener exactamente 8 caracteres'], 400);
+        }
+    
+        // Verificar que no todos los caracteres sean iguales (ejemplo: "11111111" o "00000000")
+        if (preg_match('/^(.)\1{7}$/', $numero)) {
+            return response()->json(['success' => false, 'message' => 'El DNI no puede tener todos los caracteres iguales'], 400);
+        }
+    
+        // Verificar si el DNI ya está registrado en la tabla usuarios
+        $dniExistente = Usuario::where('dni', $numero)->exists();
+        if ($dniExistente) {
+            return response()->json(['success' => false, 'message' => 'El DNI ya está registrado en la base de datos'], 400);
+        }
+    
+        // Si pasa todas las validaciones
+        return response()->json(['success' => true, 'message' => 'El DNI es válido'], 200);
+    }
+
 
     public function listarProductos(Request $request)
     {
@@ -289,61 +322,100 @@ class ClienteController extends Controller
         $idProducto = $request->input('idProducto');
         $precioInicial = $request->input('precioInicial');
         $precioFinal = $request->input('precioFinal');
-        
-        // Construir la consulta para obtener los productos con relaciones
+        $sort = $request->input('sort');
+        $perPage = $request->input('perPage', 8); // Número de productos por página, por defecto 8
+
         $query = Producto::with([
-            'categoria:idCategoria,nombreCategoria',
+            'categoria:idCategoria,nombreCategoria,estado', // Incluir el campo 'estado' de la categoría
             'modelos' => function($query) {
-                $query->with([
-                    'imagenes:idImagen,urlImagen,idModelo',
-                    'stock' => function($query) {
-                        $query->with('talla:idTalla,nombreTalla');
-                    }
-                ]);
+                $query->where('estado', 'activo') // Solo modelos con estado 'activo'
+                      ->with([
+                          'imagenes:idImagen,urlImagen,idModelo',
+                          'stock' => function($query) {
+                              $query->with('talla:idTalla,nombreTalla');
+                          }
+                      ]);
+            },
+            'ofertas' => function($query) {
+                $query->where('estado', 1) // Ofertas activas
+                      ->where('fechaInicio', '<=', now())
+                      ->where('fechaFin', '>=', now());
             }
         ]);
 
-            
-        // Filtrar por estado 'activo' (se asume que 'estado' es un campo en la tabla 'productos')
+        // Filtrar por estado 'activo' en la tabla 'productos'
         $query->where('estado', 'activo');
-        
+
+        // Filtrar por estado 'activo' en la tabla 'categorias'
+        $query->whereHas('categoria', function($q) {
+            $q->where('estado', 'activo');
+        });
+
         // Filtrar por idProducto si el parámetro 'idProducto' existe
         if ($idProducto) {
             $query->where('idProducto', $idProducto);
         }
-        
+
         // Filtrar por categoría si el parámetro 'categoria' existe
         if ($categoriaId) {
             $query->where('idCategoria', $categoriaId);
         }
-        
+
         // Filtrar por texto en el nombre del producto si el parámetro 'texto' existe
         if ($texto) {
             $query->where('nombreProducto', 'like', '%' . $texto . '%');
         }
-        
-        // Filtrar por rango de precios si se proporcionan
+
+        // Filtrar por rango de precios solo si ambos parámetros están presentes
         if ($precioInicial !== null && $precioFinal !== null) {
             $query->whereBetween('precio', [$precioInicial, $precioFinal]);
         }
-        
-        // Obtener los productos
-        $productos = $query->get();
-        
+
+        // Aplicar ordenamiento según el parámetro sort
+        switch ($sort) {
+            case 'az':
+                $query->orderBy('nombreProducto', 'asc');
+                break;
+            case 'za':
+                $query->orderBy('nombreProducto', 'desc');
+                break;
+            case 'price_asc':
+                $query->orderBy('precio', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('precio', 'desc');
+                break;
+        }
+
+        // Obtener los productos paginados
+        $productos = $query->paginate($perPage);
+
         // Si se pasó un 'idProducto', se devuelve un solo producto
         if ($idProducto) {
             $producto = $productos->first();
-        
+
             if ($producto) {
+                // Verificar si el producto tiene una oferta activa
+                $precioOriginal = $producto->precio;
+                $precioDescuento = $precioOriginal;
+                $ofertaActiva = $producto->ofertas->first();
+
+                if ($ofertaActiva) {
+                    $descuento = $ofertaActiva->porcentajeDescuento;
+                    $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
+                }
+
                 $productoData = [
                     'idProducto' => $producto->idProducto,
                     'nombreProducto' => $producto->nombreProducto,
                     'descripcion' => $producto->descripcion,
                     'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
-                    'precio' => $producto->precio,
+                    'precioOriginal' => $precioOriginal,
+                    'precioDescuento' => $precioDescuento,
+                    'tieneOferta' => !!$ofertaActiva,
                     'modelos' => $producto->modelos->map(function($modelo) {
                         return [
-                            'idModelo' => $modelo->idModelo, // Agregar idModelo
+                            'idModelo' => $modelo->idModelo,
                             'nombreModelo' => $modelo->nombreModelo,
                             'imagenes' => $modelo->imagenes->map(function($imagen) {
                                 return [
@@ -352,7 +424,7 @@ class ClienteController extends Controller
                             }),
                             'tallas' => $modelo->stock->map(function($stock) {
                                 return [
-                                    'idTalla' => $stock->talla->idTalla, // Agregar idTalla
+                                    'idTalla' => $stock->talla->idTalla,
                                     'nombreTalla' => $stock->talla->nombreTalla,
                                     'cantidad' => $stock->cantidad
                                 ];
@@ -360,24 +432,35 @@ class ClienteController extends Controller
                         ];
                     })
                 ];
-        
+
                 return response()->json(['data' => $productoData], 200);
             } else {
                 return response()->json(['message' => 'Producto no encontrado'], 404);
             }
         }
-        
-        // Si no se pasa un 'idProducto', se devuelve la lista de productos filtrados
+
+        // Si no se pasó un 'idProducto', devolver todos los productos paginados
         $productosData = $productos->map(function($producto) {
+            $precioOriginal = $producto->precio;
+            $precioDescuento = $precioOriginal;
+            $ofertaActiva = $producto->ofertas->first();
+
+            if ($ofertaActiva) {
+                $descuento = $ofertaActiva->porcentajeDescuento;
+                $precioDescuento = $precioOriginal * (1 - ($descuento / 100));
+            }
+
             return [
                 'idProducto' => $producto->idProducto,
                 'nombreProducto' => $producto->nombreProducto,
                 'descripcion' => $producto->descripcion,
                 'nombreCategoria' => $producto->categoria ? $producto->categoria->nombreCategoria : 'Sin Categoría',
-                'precio' => $producto->precio,
+                'precioOriginal' => $precioOriginal,
+                'precioDescuento' => $precioDescuento,
+                'tieneOferta' => !!$ofertaActiva,
                 'modelos' => $producto->modelos->map(function($modelo) {
                     return [
-                        'idModelo' => $modelo->idModelo, // Agregar idModelo
+                        'idModelo' => $modelo->idModelo,
                         'nombreModelo' => $modelo->nombreModelo,
                         'imagenes' => $modelo->imagenes->map(function($imagen) {
                             return [
@@ -386,7 +469,7 @@ class ClienteController extends Controller
                         }),
                         'tallas' => $modelo->stock->map(function($stock) {
                             return [
-                                'idTalla' => $stock->talla->idTalla, // Agregar idTalla
+                                'idTalla' => $stock->talla->idTalla,
                                 'nombreTalla' => $stock->talla->nombreTalla,
                                 'cantidad' => $stock->cantidad
                             ];
@@ -395,13 +478,32 @@ class ClienteController extends Controller
                 })
             ];
         });
-        
-        return response()->json(['data' => $productosData], 200);
+
+        return response()->json([
+            'data' => $productosData,
+            'current_page' => $productos->currentPage(),
+            'per_page' => $productos->perPage(),
+            'total' => $productos->total(),
+            'last_page' => $productos->lastPage(),
+        ], 200);
     }
 
-  
+    public function obtenerCaracteristicas($idProducto)
+    {
+        $caracteristicas = CaracteristicaProducto::where('idProducto', $idProducto)->first();
 
+        if (!$caracteristicas) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontraron características para este producto.',
+            ], 404);
+        }
 
+        return response()->json([
+            'success' => true,
+            'data' => $caracteristicas,
+        ]);
+    }
 
     /**
      * @OA\Post(
@@ -494,13 +596,13 @@ class ClienteController extends Controller
                     'message' => 'Producto no encontrado',
                 ], 404);
             }
-    
+
             // Obtener el stock disponible del modelo y talla seleccionados
             $stock = Stock::where('idModelo', $validatedData['idModelo'])
                             ->where('idTalla', $validatedData['idTalla'])
                             ->first();
             
-           // Verificar si hay stock disponible
+            // Verificar si hay stock disponible
             if (!$stock || $stock->cantidad < $validatedData['cantidad']) {
                 return response()->json([
                     'success' => false,
@@ -518,10 +620,24 @@ class ClienteController extends Controller
                     'message' => 'Precio inválido del producto',
                 ], 400);
             }
-    
+
+            // Verificar si el producto tiene una oferta activa
+            $ofertaActiva = $producto->ofertas()
+                ->where('estado', 1) // Oferta activa
+                ->where('fechaInicio', '<=', now())
+                ->where('fechaFin', '>=', now())
+                ->first();
+
+            // Calcular el precio con descuento si hay una oferta activa
+            $precioFinal = $precio;
+            if ($ofertaActiva) {
+                $descuento = $ofertaActiva->porcentajeDescuento;
+                $precioFinal = $precio * (1 - ($descuento / 100));
+            }
+
             // Calcular el subtotal en el backend
-            $subtotal = $precio * $validatedData['cantidad'];
-    
+            $subtotal = $precioFinal * $validatedData['cantidad'];
+
             // Verificar que el subtotal sea un número válido
             if (!is_numeric($subtotal) || $subtotal <= 0) {
                 return response()->json([
@@ -529,7 +645,7 @@ class ClienteController extends Controller
                     'message' => 'El precio calculado es inválido',
                 ], 400);
             }
-    
+
             // Obtener el carrito del usuario (si no existe, lo crea)
             $carrito = Carrito::firstOrCreate(['idUsuario' => $validatedData['idUsuario']]);
             
@@ -552,10 +668,10 @@ class ClienteController extends Controller
                         'message' => 'La cantidad total en el carrito supera el stock disponible',
                     ], 400);
                 }
-    
+
                 // Actualizar la cantidad y recalcular el precio total
-                $nuevoSubtotal = $precio * $nuevaCantidad;
-    
+                $nuevoSubtotal = $precioFinal * $nuevaCantidad;
+
                 // Actualizar el detalle del carrito
                 $carritoDetalle->update([
                     'cantidad' => $nuevaCantidad,
@@ -570,7 +686,7 @@ class ClienteController extends Controller
                         'message' => 'La cantidad solicitada excede el stock disponible',
                     ], 400);
                 }
-    
+
                 // Si el producto no está en el carrito, lo agregamos
                 CarritoDetalle::create([
                     'idCarrito' => $carrito->idCarrito,
@@ -581,7 +697,7 @@ class ClienteController extends Controller
                     'subtotal' => $subtotal,  // Aseguramos de incluir el subtotal
                 ]);
             }
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Producto agregado al carrito con éxito',
@@ -605,7 +721,6 @@ class ClienteController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * @OA\Post(
@@ -672,46 +787,55 @@ class ClienteController extends Controller
                 return response()->json(['success' => false, 'message' => 'El idUsuario es obligatorio'], 400);
             }
 
-           $productos = DB::table('carrito_detalle as cd')
-            ->join('carrito as c', 'cd.idCarrito', '=', 'c.idCarrito')
-            ->join('productos as p', 'cd.idProducto', '=', 'p.idProducto')
-            ->join('modelos as m', 'cd.idModelo', '=', 'm.idModelo')
-            ->leftJoin('tallas as t', 'cd.idTalla', '=', 't.idTalla')
-            ->leftJoin('stock as s', function ($join) {
-                $join->on('s.idModelo', '=', 'm.idModelo')
-                    ->on('s.idTalla', '=', 'cd.idTalla');
-            })
-            ->leftJoin('imagenes_modelo as im', 'm.idModelo', '=', 'im.idModelo')
-            ->select(
-              //  DB::raw('CONCAT(p.idProducto, "-", IFNULL(t.nombreTalla, ""), "-", IFNULL(m.nombreModelo, "")) as idDetalle'),
-                'cd.idDetalle',
-                'p.idProducto',
-                'p.nombreProducto',
-                'p.descripcion',
-                'cd.cantidad', // Usamos la cantidad directamente de la tabla carrito_detalle
-                'p.precio', // Solo listamos el precio de carrito_detalle
-                DB::raw('IFNULL(MAX(s.cantidad), 0) as stock'), // Obtenemos el stock disponible
-                DB::raw('MAX(im.urlImagen) as urlImagen'), // Obtenemos la URL de la imagen
-                'p.idCategoria',
-                't.nombreTalla',
-                'm.nombreModelo',
-                'cd.subtotal' // Listamos directamente el campo subtotal desde carrito_detalle
-            )
-            ->where('c.idUsuario', '=', $userId)
-            ->groupBy(
-                'cd.idDetalle',
-                'p.idProducto',
-                'p.nombreProducto',
-                'p.descripcion',
-                'p.precio',  // Aseguramos que precio esté en el GROUP BY
-                'cd.subtotal', // Agregamos subtotal
-                'cd.cantidad',
-                'p.idCategoria',
-                't.nombreTalla',
-                'm.nombreModelo'
-            )
-            ->orderBy('p.idProducto')
-            ->get();
+            $productos = DB::table('carrito_detalle as cd')
+                ->join('carrito as c', 'cd.idCarrito', '=', 'c.idCarrito')
+                ->join('productos as p', 'cd.idProducto', '=', 'p.idProducto')
+                ->join('modelos as m', 'cd.idModelo', '=', 'm.idModelo')
+                ->leftJoin('tallas as t', 'cd.idTalla', '=', 't.idTalla')
+                ->leftJoin('stock as s', function ($join) {
+                    $join->on('s.idModelo', '=', 'm.idModelo')
+                        ->on('s.idTalla', '=', 'cd.idTalla');
+                })
+                ->leftJoin('imagenes_modelo as im', 'm.idModelo', '=', 'im.idModelo')
+                ->leftJoin('productosofertas as po', 'p.idProducto', '=', 'po.idProducto')
+                ->leftJoin('ofertas as o', function ($join) {
+                    $join->on('o.idOferta', '=', 'po.idOferta')
+                        ->where('o.estado', 1) // Oferta activa
+                        ->where('o.fechaInicio', '<=', now())
+                        ->where('o.fechaFin', '>=', now());
+                })
+                ->select(
+                    'cd.idDetalle',
+                    'p.idProducto',
+                    'p.nombreProducto',
+                    'p.descripcion',
+                    'cd.cantidad',
+                    'p.precio as precioOriginal', // Precio original del producto
+                    DB::raw('IFNULL(o.porcentajeDescuento, 0) as descuento'), // Descuento de la oferta
+                    DB::raw('IFNULL(p.precio * (1 - o.porcentajeDescuento / 100), p.precio) as precioFinal'), // Precio con descuento
+                    DB::raw('IFNULL(MAX(s.cantidad), 0) as stock'),
+                    DB::raw('MAX(im.urlImagen) as urlImagen'),
+                    'p.idCategoria',
+                    't.nombreTalla',
+                    'm.nombreModelo',
+                    'cd.subtotal'
+                )
+                ->where('c.idUsuario', '=', $userId)
+                ->groupBy(
+                    'cd.idDetalle',
+                    'p.idProducto',
+                    'p.nombreProducto',
+                    'p.descripcion',
+                    'p.precio',
+                    'cd.subtotal',
+                    'cd.cantidad',
+                    'p.idCategoria',
+                    't.nombreTalla',
+                    'm.nombreModelo',
+                    'o.porcentajeDescuento'
+                )
+                ->orderBy('p.idProducto')
+                ->get();
 
             return response()->json(['success' => true, 'data' => $productos], 200);
         } catch (\Exception $e) {
@@ -719,7 +843,6 @@ class ClienteController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al obtener el carrito'], 500);
         }
     }
-
 
     /**
      * @OA\Put(
@@ -783,8 +906,8 @@ class ClienteController extends Controller
     {
         // Obtener la cantidad y el idUsuario desde el cuerpo de la solicitud
         $cantidad = $request->input('cantidad');
-        $idUsuario = $request->input('idUsuario'); // Obtener el idUsuario
-        
+        $idUsuario = $request->input('idUsuario');
+    
         // Verificar que la cantidad es válida
         if (!is_numeric($cantidad) || $cantidad <= 0) {
             return response()->json([
@@ -792,34 +915,34 @@ class ClienteController extends Controller
                 'message' => 'La cantidad debe ser un número mayor que 0.',
             ], 400);
         }
-
+    
         // Buscar el detalle del carrito con el idDetalle y el idUsuario recibido
         $detalle = CarritoDetalle::whereHas('carrito', function($query) use ($idUsuario) {
                 $query->where('carrito.idUsuario', $idUsuario);
             })
             ->where('idDetalle', $idDetalle)
             ->first();
-
+    
         if (!$detalle) {
             return response()->json([
                 'success' => false,
                 'message' => 'Detalle no encontrado en el carrito',
             ], 404);
         }
-
+    
         // Obtener los datos del stock según el idModelo y idTalla del detalle
         $stock = DB::table('stock')
             ->where('idModelo', $detalle->idModelo)
             ->where('idTalla', $detalle->idTalla)
             ->first();
-
+    
         if (!$stock) {
             return response()->json([
                 'success' => false,
                 'message' => 'No se encontró stock para el modelo y talla especificados',
             ], 404);
         }
-
+    
         // Verificar si la cantidad solicitada excede el stock disponible
         if ($cantidad > $stock->cantidad) {
             return response()->json([
@@ -827,7 +950,7 @@ class ClienteController extends Controller
                 'message' => 'La cantidad solicitada supera el stock disponible',
             ], 400);
         }
-
+    
         // Obtener el producto asociado al detalle
         $producto = Producto::find($detalle->idProducto);
         if (!$producto) {
@@ -836,17 +959,36 @@ class ClienteController extends Controller
                 'message' => 'Producto no encontrado en la base de datos',
             ], 404);
         }
-
+    
+        // Verificar si el producto tiene una oferta activa
+        $ofertaActiva = $producto->ofertas()
+            ->where('estado', 1)
+            ->where('fechaInicio', '<=', now())
+            ->where('fechaFin', '>=', now())
+            ->first();
+    
+        // Calcular el precio con descuento si hay una oferta activa
+        $precioFinal = $producto->precio;
+        if ($ofertaActiva) {
+            $descuento = $ofertaActiva->porcentajeDescuento;
+            $precioFinal = $producto->precio * (1 - ($descuento / 100));
+        }
+    
         // Actualizar la cantidad y el subtotal en el carritoDetalle
         $detalle->cantidad = $cantidad;
-        $detalle->subtotal = $producto->precio * $cantidad;
-
+        $detalle->subtotal = $precioFinal * $cantidad;
+    
         // Guardar los cambios
         $detalle->save();
-
+    
         return response()->json([
             'success' => true,
             'message' => 'Cantidad y precio actualizados correctamente',
+            'data' => [
+                'cantidad' => $cantidad,
+                'subtotal' => $detalle->subtotal,
+                'precioFinal' => $precioFinal
+            ]
         ], 200);
     }
 
@@ -980,25 +1122,25 @@ class ClienteController extends Controller
                 'total' => 'required|numeric',
                 'idDireccion' => 'required|integer|exists:detalle_direcciones,idDireccion'
             ]);
-
+        
             // Extraemos los datos del request
             $idUsuario = $request->input('idUsuario');
             $idCarrito = $request->input('idCarrito');
             $total = $request->input('total');
             $idDireccion = $request->input('idDireccion');
             $estadoPedido = 'pendiente';
-
+        
             // Obtener los detalles de la dirección desde la tabla detalle_direcciones
             $direccionDetalles = DB::table('detalle_direcciones')
                 ->where('idDireccion', $idDireccion)
                 ->where('idUsuario', $idUsuario)
                 ->where('estado', 'usando')  // Solo seleccionar si el estado es 'usando'
                 ->first();
-
+        
             if (!$direccionDetalles) {
                 throw new \Exception('La dirección proporcionada no existe o no está en uso.');
             }
-
+        
             // Extraemos los datos de la dirección
             $departamento = $direccionDetalles->departamento;
             $provincia = $direccionDetalles->provincia;
@@ -1006,7 +1148,7 @@ class ClienteController extends Controller
             $direccion = $direccionDetalles->direccion;
             $latitud = $direccionDetalles->latitud;
             $longitud = $direccionDetalles->longitud;
-
+        
             // Crear el pedido con los nuevos campos obtenidos de la dirección
             $pedidoId = DB::table('pedidos')->insertGetId([
                 'idUsuario' => $idUsuario,
@@ -1018,25 +1160,30 @@ class ClienteController extends Controller
                 'direccion' => $direccion,
                 'latitud' => $latitud,
                 'longitud' => $longitud,
-                'fecha_pedido' => now(), // Se agrega la fecha actual del pedido
+                'fecha_pedido' => now(), 
+                'tipo_comprobante' =>null, 
+                'ruc' => null,
+                'serie' => null
             ]);
-
+        
             // Insertar la dirección en la tabla de detalle_direccion_pedido
             DB::table('detalle_direccion_pedido')->insert([
                 'idPedido' => $pedidoId,
                 'idDireccion' => $idDireccion,
             ]);
-
+        
             // Obtener los detalles del carrito
             $detallesCarrito = DB::table('carrito_detalle')
                 ->where('idCarrito', $idCarrito)
                 ->get();
-
+        
             if ($detallesCarrito->isEmpty()) {
                 throw new \Exception('El carrito está vacío.');
             }
-
+        
             $productos = [];
+            $totalConIgv = 0;
+        
             foreach ($detallesCarrito as $detalle) {
                 // Obtener el producto con el precio correcto desde la tabla productos
                 $producto = DB::table('productos')->where('idProducto', $detalle->idProducto)->first();
@@ -1059,10 +1206,18 @@ class ClienteController extends Controller
                     throw new \Exception("Stock insuficiente para el producto: {$producto->nombreProducto}. Solo hay {$stock} unidades disponibles.");
                 }
             
+                // Consultar el modelo y la talla
+                $modelo = DB::table('modelos')->where('idModelo', $detalle->idModelo)->value('nombreModelo');
+                $talla = DB::table('tallas')->where('idTalla', $detalle->idTalla)->value('nombreTalla');
+            
                 // Obtener el precio unitario del producto y calcular el subtotal
                 $precioUnitario = $producto->precio;
                 $subtotal = $detalle->cantidad * $precioUnitario;
-            
+        
+                // Calcular IGV (18%)
+                $igv = $subtotal * 0.18;
+                $subtotalConIgv = $subtotal + $igv;
+        
                 // Insertar en la tabla pedido_detalle con los nuevos campos (idModelo y idTalla)
                 DB::table('pedido_detalle')->insert([
                     'idPedido' => $pedidoId,
@@ -1071,41 +1226,47 @@ class ClienteController extends Controller
                     'idTalla' => $detalle->idTalla,    // Nuevo campo
                     'cantidad' => $detalle->cantidad,
                     'precioUnitario' => $precioUnitario,
-                    'subtotal' => $subtotal,
+                    'subtotal' => $subtotalConIgv,
                 ]);
-            
+        
+                // Agregar al array de productos
                 $productos[] = (object) [
                     'nombreProducto' => $producto->nombreProducto,
                     'cantidad' => $detalle->cantidad,
                     'precioUnitario' => $precioUnitario,
-                    'subtotal' => $subtotal,
+                    'subtotal' => $subtotalConIgv,
+                    'talla' => $talla ?? 'Sin Talla',         // Aseguramos un valor por defecto
+                    'modelo' => $modelo ?? 'Sin Modelo',      // Aseguramos un valor por defecto  
                 ];
+        
+                // Acumulamos el total con IGV
+                $totalConIgv += $subtotalConIgv;
             }
-
+        
             // Registrar el pago (sin metodo_pago ni comprobante si no se proporcionan)
             DB::table('pagos')->insert([
                 'idPedido' => $pedidoId,
-                'monto' => $total,
+                'monto' => $totalConIgv,  // El total ahora incluye IGV
                 'estado_pago' => 'pendiente', // El pago aún no está completado
             ]);
-
+        
             // Limpiar el carrito de detalles (vaciar el carrito)
             DB::table('carrito_detalle')->where('idCarrito', $idCarrito)->delete();
-
+        
             // Confirmamos la transacción
             DB::commit();
-
+        
             // Enviar el correo de confirmación al usuario
             $correoUsuario = DB::table('usuarios')->where('idUsuario', $idUsuario)->value('correo');
-            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $total));
-
+            Mail::to($correoUsuario)->send(new NotificacionPedido($pedidoId, $productos, $totalConIgv));
+        
             // Respuesta exitosa
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido creado exitosamente.',
                 'idPedido' => $pedidoId,
             ], 201);
-
+        
         } catch (\Exception $e) {
             // Si hay un error, revertimos la transacción
             DB::rollBack();
@@ -1896,6 +2057,25 @@ class ClienteController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function obtenerOfertaActiva()
+    {
+        $ofertaActiva = Oferta::where('estado', 1)
+            ->where('fechaInicio', '<=', now())
+            ->where('fechaFin', '>=', now())
+            ->first();
+
+        if ($ofertaActiva) {
+            return response()->json([
+                'success' => true,
+                'data' => $ofertaActiva,
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay ofertas activas',
+            ]);
+        }
+    }
 
     public function verificarCodigo(Request $request, $idUsuario)
     {
@@ -1956,6 +2136,110 @@ class ClienteController extends Controller
         Mail::to($usuario->correo)->send(new NotificacionPedidoCancelado($nombreCompleto, $pedido->idPedido));
     
         return response()->json(['message' => 'Pedido cancelado exitosamente'], 200);
+    }
+
+    public function obtenerDireccionPedido($idPedido)
+    {
+        $direccion = DetalleDireccionPedido::where('idPedido', $idPedido)
+            ->with('detalleDireccion') // Cargar datos de relación detalle_direccion
+            ->first();
+
+        if ($direccion) {
+            return response()->json([
+                'success' => true,
+                'direccion' => [
+                    'region' => $direccion->detalleDireccion->region,
+                    'provincia' => $direccion->detalleDireccion->provincia,
+                    'direccion' => $direccion->detalleDireccion->direccion,
+                    'latitud' => $direccion->detalleDireccion->latitud,
+                    'longitud' => $direccion->detalleDireccion->longitud,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Dirección no encontrada para el pedido'
+        ]);
+    }
+
+    // Obtener las 8 primeras categorías con estado "activo" para el home principal
+    public function listarCategorias()
+    {
+        // Filtrar las categorías por estado "activo" y obtener las primeras 8
+        $categorias = Categoria::where('estado', 'activo')
+                            ->take(12)
+                            ->get();
+
+        // Devolver las categorías como JSON con un mensaje de éxito
+        return response()->json(['success' => true, 'data' => $categorias], 200);
+    }
+
+    public function obtenerPrecioMaximo()
+    {
+        // Obtener el precio más alto de la tabla productos
+        $precioMaximo = Producto::max('precio');
+        
+        if ($precioMaximo === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontraron productos.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'precioMaximo' => $precioMaximo
+        ]);
+    }
+
+    public function getTipoPago(Request $request)
+    {
+        // Verificar el token de autenticación
+        if (!$request->user()) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
+        }
+
+        // Obtener el tipo de pago activo
+        $tipoPago = TipoPago::where('status', 1)->first();
+
+        if (!$tipoPago) {
+            return response()->json(['success' => false, 'message' => 'No se encontró un tipo de pago activo'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'tipo_pago' => $tipoPago->nombre,
+        ]);
+    }
+    public function getProductosDestacados()
+    {
+        $productosDestacados = DB::table('pedido_detalle as dp')
+            ->join('productos as p', 'dp.idProducto', '=', 'p.idProducto')
+            ->join('modelos as m', 'dp.idModelo', '=', 'm.idModelo')
+            ->join('pagos as pg', 'dp.idPedido', '=', 'pg.idPedido')
+            ->leftJoin('imagenes_modelo as im', function ($join) {
+                $join->on('m.idModelo', '=', 'im.idModelo')
+                     ->whereRaw('im.idImagen = (SELECT MIN(idImagen) FROM imagenes_modelo WHERE idModelo = m.idModelo)');
+            })
+            ->select(
+                'p.idProducto',
+                'p.nombreProducto',
+                'm.idModelo',
+                'm.nombreModelo',
+                'im.urlImagen',
+                DB::raw('SUM(dp.cantidad) as totalVentas')
+            )
+            ->where('pg.estado_pago', 'completado')
+            ->groupBy('p.idProducto', 'm.idModelo', 'p.nombreProducto', 'm.nombreModelo', 'im.urlImagen')
+            ->having('totalVentas', '>', 2) // Filtra productos con más de 3 ventas
+            ->orderBy('totalVentas', 'DESC')
+            ->paginate(4); // Paginación de 4 productos por página
+    
+        return response()->json([
+            'success' => true,
+            'data' => $productosDestacados
+        ]);
     }
 
     //APIS ESTADISTICA
