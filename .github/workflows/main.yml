@@ -1,0 +1,57 @@
+name: Deploy Laravel to EC2 using AWS CLI and SSM
+
+on:
+  push:
+    branches:
+      - main  # Cambia si usas otra rama
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Configurar AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region ${{ secrets.AWS_REGION }}
+
+      - name: Obtener ID de instancia EC2
+        id: get_instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=thonyserver" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text)
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+          echo "La instancia es: $INSTANCE_ID"
+
+      - name: Ejecutar comandos en la instancia vía SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids $INSTANCE_ID \
+            --document-name "AWS-RunShellScript" \
+            --comment "Desplegar Laravel" \
+            --parameters commands='[
+              "cd /var/www/ECOMMERCE-BACK-LARAVEL",
+              "git pull origin main",
+              "composer install --no-dev --optimize-autoloader",
+              "chmod -R 775 storage bootstrap/cache",
+              "chown -R www-data:www-data storage bootstrap/cache",
+              "php artisan migrate --force",
+              "php artisan config:clear",
+              "php artisan cache:clear",
+              "php artisan route:clear",
+              "php artisan view:clear",
+              "php artisan config:cache",
+              "sudo systemctl restart php-fpm",
+              "sudo systemctl restart nginx",
+              "sudo supervisorctl reread",
+              "sudo supervisorctl update",
+              "sudo supervisorctl restart laravel:*"
+            ]' \
+            --timeout-seconds 600 \
+            --output text
