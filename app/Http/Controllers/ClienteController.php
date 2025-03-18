@@ -2173,7 +2173,7 @@ class ClienteController extends Controller
     {
         // Filtrar las categorías por estado "activo" y obtener las primeras 8
         $categorias = Categoria::where('estado', 'activo')
-                            ->take(12)
+                       //     ->take(12)
                             ->get();
 
         // Devolver las categorías como JSON con un mensaje de éxito
