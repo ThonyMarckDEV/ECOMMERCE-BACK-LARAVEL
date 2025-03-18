@@ -176,27 +176,29 @@ class ClienteController extends Controller
             return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
         }
         
-        // Verifica si hay un archivo en la solicitud
         if ($request->hasFile('perfil')) {
             $path = "profiles/$idUsuario";
-            
-            // Asegurarse de que el directorio exista
-            Storage::disk('public')->makeDirectory($path, 0775, true);
-            
-            // Si hay una imagen de perfil existente, elimínala antes de guardar la nueva
+            Storage::disk('public')->makeDirectory($path);
+        
+            // Si hay una imagen existente, la elimina
             if ($cliente->perfil && Storage::disk('public')->exists($cliente->perfil)) {
                 Storage::disk('public')->delete($cliente->perfil);
             }
+        
+            // Genera un nombre de archivo aleatorio
+            $extension = $request->file('perfil')->getClientOriginalExtension();
+            $randomName = Str::random(40); // genera 40 caracteres aleatorios
+            $filename = $randomName . '.' . $extension;
+        
+            // Guarda la imagen usando storeAs, definiendo explícitamente la ruta y el nombre
+            $request->file('perfil')->storeAs($path, $filename, 'public');
             
-            // Guarda la nueva imagen de perfil en el disco 'public'
-            $filename = $request->file('perfil')->store($path, 'public');
-            $cliente->perfil = $filename; // Actualiza la ruta en el campo `perfil` del usuario
+            // Actualiza la ruta del perfil en el usuario
+            $cliente->perfil = "$path/$filename";
             $cliente->save();
             
-            return response()->json(['success' => true, 'filename' => basename($filename)]);
+            return response()->json(['success' => true, 'filename' => $filename]);
         }
-        
-        return response()->json(['success' => false, 'message' => 'No se cargó la imagen'], 400);
     }
 
 

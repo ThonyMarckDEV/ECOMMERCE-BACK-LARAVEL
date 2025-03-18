@@ -77,6 +77,7 @@ use App\Http\Controllers\SuperAdminController;
         Route::put('/actualizarStock/{idStock}', [SuperAdminController::class, 'actualizarStock']);
         Route::delete('/eliminarStock/{idStock}', [SuperAdminController::class, 'eliminarStock']);
 
+        
         Route::post('/editarModeloyImagen/{id}', [SuperAdminController::class, 'editarModeloyImagen']);
         Route::delete('/eliminarImagenModelo/{id}', [SuperAdminController::class, 'eliminarImagenModelo']);
         Route::get('/listarProductos', [SuperAdminController::class, 'listarProductos']);
