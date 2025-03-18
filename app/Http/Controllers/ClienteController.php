@@ -171,28 +171,31 @@ class ClienteController extends Controller
      */
     public function uploadProfileImageCliente(Request $request, $idUsuario)
     {
-        $docente = Usuario::find($idUsuario);
-        if (!$docente) {
+        $cliente = Usuario::find($idUsuario);
+        if (!$cliente) {
             return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
         }
-
+        
         // Verifica si hay un archivo en la solicitud
         if ($request->hasFile('perfil')) {
             $path = "profiles/$idUsuario";
-
+            
+            // Asegurarse de que el directorio exista
+            Storage::disk('public')->makeDirectory($path, 0775, true);
+            
             // Si hay una imagen de perfil existente, elimínala antes de guardar la nueva
-            if ($docente->perfil && Storage::disk('public')->exists($docente->perfil)) {
-                Storage::disk('public')->delete($docente->perfil);
+            if ($cliente->perfil && Storage::disk('public')->exists($cliente->perfil)) {
+                Storage::disk('public')->delete($cliente->perfil);
             }
-
+            
             // Guarda la nueva imagen de perfil en el disco 'public'
             $filename = $request->file('perfil')->store($path, 'public');
-            $docente->perfil = $filename; // Actualiza la ruta en el campo `perfil` del usuario
-            $docente->save();
-
+            $cliente->perfil = $filename; // Actualiza la ruta en el campo `perfil` del usuario
+            $cliente->save();
+            
             return response()->json(['success' => true, 'filename' => basename($filename)]);
         }
-
+        
         return response()->json(['success' => false, 'message' => 'No se cargó la imagen'], 400);
     }
 
