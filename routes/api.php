@@ -59,15 +59,12 @@ use App\Http\Controllers\SuperAdminController;
     Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
 
 
-        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+        Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+        Route::post('/update-activity', [AuthController::class, 'updateLastActivity']);
+        Route::post('/check-active-session', [AuthController::class, 'checkSessionActive']);
 
         Route::post('logout', [AuthController::class, 'logout']);
 
-        Route::post('update-activity', [AuthController::class, 'updateLastActivity']);
-
-        Route::post('/check-status', [AuthController::class, 'checkStatus']);
-
-        
         Route::get('/categoriasproductos', [SuperAdminController::class, 'listarCategoriasproductos']);
         Route::post('/agregarProductos', [SuperAdminController::class, 'agregarProducto']);
 

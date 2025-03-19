@@ -107,93 +107,141 @@ class AuthController extends Controller
             'correo' => 'required|email',
             'password' => 'required|string|min:6',
         ]);
-    
+
         $credentials = [
             'correo' => $request->input('correo'),
             'password' => $request->input('password')
         ];
-    
+
         try {
             $usuario = Usuario::where('correo', $credentials['correo'])->first();
-    
+
             if (!$usuario) {
                 return response()->json(['error' => 'Usuario no encontrado'], 404);
             }
-    
-            if ($usuario->estado === 'inactivo') {
-                return response()->json(['error' => 'Usuario inactivo'], 403);
+
+            if ($usuario->estado === 'eliminado') {
+                return response()->json(['error' => 'Usuario eliminado'], 403);
             }
-    
+
             // Generar nuevo token
             if (!$token = JWTAuth::attempt(['correo' => $credentials['correo'], 'password' => $credentials['password']])) {
                 return response()->json(['error' => 'Credenciales inválidas'], 401);
             }
-    
+
             // IMPORTANTE: Primero invalidamos todas las sesiones existentes
-            $this->invalidarSesionesAnteriores($usuario->idUsuario);
-    
+            ActividadUsuario::where('idUsuario', $usuario->idUsuario)->delete();
+
             $dispositivo = $this->obtenerDispositivo();
-    
-            // Crear o actualizar el registro de actividad con el nuevo token
-            ActividadUsuario::updateOrCreate(
-                ['idUsuario' => $usuario->idUsuario],
-                [
-                    'last_activity' => now(),
-                    'dispositivo' => $dispositivo,
-                    'jwt' => $token,
-                    'session_active' => true
-                ]
-            );
-    
+
+            // Crear una nueva sesión con un id único
+            $actividad = ActividadUsuario::create([
+                'idUsuario' => $usuario->idUsuario,
+                'last_activity' => now(),
+                'dispositivo' => $dispositivo,
+                'jwt' => $token,
+                'session_active' => true
+            ]);
+
             // Actualizar estado del usuario
             $usuario->update(['status' => 'loggedOn']);
-    
-            // Log de la acción
-            $nombreUsuario = $usuario->nombres . ' ' . $usuario->apellidos;
-            $this->agregarLog($usuario->idUsuario, "$nombreUsuario inició sesión desde: $dispositivo");
-    
+
             return response()->json([
                 'token' => $token,
+                'sessionId' => $actividad->id, // Enviar el id de la sesión al frontend
                 'message' => 'Login exitoso, sesiones anteriores cerradas'
             ]);
-    
+
         } catch (JWTException $e) {
             Log::error('Error en login: ' . $e->getMessage());
             return response()->json(['error' => 'Error al crear token'], 500);
         }
     }
     
-    private function invalidarSesionesAnteriores($idUsuario)
-    {
-        try {
-            $actividad = ActividadUsuario::where('idUsuario', $idUsuario)->first();
-            
-            if ($actividad && $actividad->jwt) {
-                // Invalidar en JWT
-                try {
-                    JWTAuth::setToken($actividad->jwt);
-                    JWTAuth::invalidate(true);
-                } catch (\Exception $e) {
-                    Log::error('Error al invalidar JWT: ' . $e->getMessage());
-                }
-    
-                // Marcar como inactiva en la base de datos
-                $actividad->update([
-                    'session_active' => false,
-                    'jwt' => null
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error al invalidar sesiones: ' . $e->getMessage());
-        }
-    }
-    
-  
-
     // Función para obtener el dispositivo
     private function obtenerDispositivo()
     {
         return request()->header('User-Agent');  // Obtiene el User-Agent del encabezado de la solicitud
+    }
+
+
+
+    public function checkSessionActive(Request $request)
+    {
+        try {
+            $idUsuario = $request->input('idUsuario');
+            $sessionId = $request->input('sessionId'); // sessionId enviado desde el frontend
+    
+            // Obtener la sesión activa del usuario
+            $actividad = ActividadUsuario::where('idUsuario', $idUsuario)
+                ->where('session_active', true)
+                ->first();
+    
+            // Verificar si la sesión activa coincide con el sessionId enviado
+            $validSession = $actividad && $actividad->id == $sessionId;
+    
+            return response()->json([
+                'validSession' => $validSession
+            ], 200);
+    
+        } catch (\Exception $e) {
+            Log::error('Error en checkActiveSession: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al verificar la sesión activa'], 500);
+        }
+    }
+    
+    
+  
+    public function refreshToken(Request $request)
+    {
+        try {
+            $oldToken = JWTAuth::getToken();  // Obtener el token actual
+            
+            Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
+            
+            // Decodificar el token para obtener el payload
+            $decodedToken = JWTAuth::getPayload($oldToken);  // Utilizamos getPayload para obtener el payload
+            $userId = $decodedToken->get('idUsuario');  // Usamos get() para acceder a 'idUsuario'
+            
+            // Refrescar el token
+            $newToken = JWTAuth::refresh($oldToken);
+            
+            // Actualizar el campo jwt en la tabla actividad_usuario
+            $actividadUsuario = ActividadUsuario::updateOrCreate(
+                ['idUsuario' => $userId],  // Si ya existe, se actualizará por el idUsuario
+                ['jwt' => $newToken]  // Actualizar el campo jwt con el nuevo token
+            );
+            
+           Log::info('JWT actualizado en la actividad del usuario', ['userId' => $userId, 'jwt' => $newToken]);
+            
+            return response()->json(['accessToken' => $newToken], 200);
+        } catch (JWTException $e) {
+            Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
+            
+            return response()->json(['error' => 'No se pudo refrescar el token'], 500);
+        }
+    }
+
+
+
+    public function updateLastActivity(Request $request)
+    {
+        $request->validate([
+            'idUsuario' => 'required|integer',
+        ]);
+
+        $user = Usuario::find($request->idUsuario);
+        
+        if (!$user) {
+            return response()->json(['error' => 'Usuario no encontrado'], 404);
+        }
+        
+        $user->activity()->updateOrCreate(
+            ['idUsuario' => $user->idUsuario],
+            ['last_activity' => now()]
+        );
+        
+        return response()->json(['message' => 'Last activity updated'], 200);
     }
 
     public function loginWithGoogle(Request $request)
@@ -232,7 +280,7 @@ class AuthController extends Controller
             $token = JWTAuth::fromUser($usuario);
 
             // IMPORTANTE: Primero invalidamos todas las sesiones existentes
-            $this->invalidarSesionesAnteriores($usuario->idUsuario);
+            ActividadUsuario::where('idUsuario', $usuario->idUsuario)->delete();
 
             $dispositivo = $this->obtenerDispositivo();
 
@@ -793,229 +841,6 @@ class AuthController extends Controller
            'message' => 'No se pudo encontrar el usuario'
        ], 404);
    }
-
-
-   
-   public function refreshToken(Request $request)
-   {
-       try {
-           $oldToken = JWTAuth::getToken();  // Obtener el token actual
-           
-           Log::info('Refrescando token: Token recibido', ['token' => (string) $oldToken]);
-           
-           // Decodificar el token para obtener el payload
-           $decodedToken = JWTAuth::getPayload($oldToken);  // Utilizamos getPayload para obtener el payload
-           $userId = $decodedToken->get('idUsuario');  // Usamos get() para acceder a 'idUsuario'
-           
-           // Refrescar el token
-           $newToken = JWTAuth::refresh($oldToken);
-           
-           // Actualizar el campo jwt en la tabla actividad_usuario
-           $actividadUsuario = ActividadUsuario::updateOrCreate(
-               ['idUsuario' => $userId],  // Si ya existe, se actualizará por el idUsuario
-               ['jwt' => $newToken]  // Actualizar el campo jwt con el nuevo token
-           );
-           
-           Log::info('JWT actualizado en la actividad del usuario', ['userId' => $userId, 'jwt' => $newToken]);
-           
-           return response()->json(['accessToken' => $newToken], 200);
-       } catch (JWTException $e) {
-           Log::error('Error al refrescar el token', ['error' => $e->getMessage()]);
-           
-           return response()->json(['error' => 'No se pudo refrescar el token'], 500);
-       }
-   }
-
-
- 
-    /**
-     * @OA\Post(
-     *     path="/api/update-activity",
-     *     summary="Actualizar la última actividad del usuario",
-     *     description="Este endpoint actualiza la fecha de la última actividad del usuario especificado.",
-     *     operationId="updateLastActivity",
-     *     tags={"AUTH CONTROLLER"},
-     *     security={{"bearerAuth": {}}},
-     *     @OA\Parameter(
-     *         name="idUsuario",
-     *         in="query",
-     *         description="ID del usuario cuya última actividad se actualizará.",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="integer",
-     *             example=1
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Actividad actualizada correctamente.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Last activity updated")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Usuario no encontrado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="Usuario no encontrado")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Datos de entrada inválidos.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="error", type="string", example="ID de usuario requerido")
-     *         )
-     *     )
-     * )
-     */
-    public function updateLastActivity(Request $request)
-    {
-        $request->validate([
-            'idUsuario' => 'required|integer',
-        ]);
-
-        $user = Usuario::find($request->idUsuario);
-        
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
-        }
-        
-        $user->activity()->updateOrCreate(
-            ['idUsuario' => $user->idUsuario],
-            ['last_activity' => now()]
-        );
-        
-        return response()->json(['message' => 'Last activity updated'], 200);
-    }
-
-    /**
-     * @OA\Post(
-     *     path="/api/check-status",
-     *     summary="Verificar el estado del usuario",
-     *     description="Este endpoint verifica el estado del usuario, si está conectado o desconectado.",
-     *     operationId="checkStatus",
-     *     tags={"AUTH CONTROLLER"},
-     *     security={{"bearerAuth": {}}},
-     *     @OA\Parameter(
-     *         name="idUsuario",
-     *         in="query",
-     *         description="ID del usuario cuyo estado se desea verificar.",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="integer",
-     *             example=1
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="El usuario está activo.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="status", type="string", example="active")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="ID de usuario no proporcionado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="ID de usuario no proporcionado")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Usuario no encontrado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Usuario no encontrado")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=403,
-     *         description="Usuario desconectado.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Usuario desconectado")
-     *         )
-     *     )
-     * )
-     */
-    public function checkStatus(Request $request)
-    {
-        try {
-            // Validar que el idUsuario esté presente
-            $request->validate([
-                'idUsuario' => 'required|integer',
-            ]);
-
-            $idUsuario = $request->input('idUsuario');
-            $token = $request->bearerToken();
-
-            // Verificar si hay token
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Token no proporcionado'
-                ], 401);
-            }
-
-            try {
-                // Verificar si el token es válido en JWT
-                $tokenValido = JWTAuth::parseToken()->check();
-                if (!$tokenValido) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Token expirado o inválido'
-                    ], 401);
-                }
-            } catch (\Exception $e) {
-                Log::error('Error al verificar token JWT: ' . $e->getMessage());
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Error al verificar token'
-                ], 401);
-            }
-
-            // Buscar el registro de actividad del usuario
-            $actividadUsuario = ActividadUsuario::where('idUsuario', $idUsuario)->first();
-
-            // Si no hay registro de actividad
-            if (!$actividadUsuario) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No hay registro de actividad'
-                ], 404);
-            }
-
-            // Verificar si el token coincide
-            if ($actividadUsuario->jwt !== $token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Token no coincide con el almacenado',
-                    'force_logout' => true
-                ], 401);
-            }
-
-            // Todo está bien
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Token válido'
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error de validación',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error en checkStatus: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error interno del servidor'
-            ], 500);
-        }
-    }
 
     /**
      * @OA\Post(

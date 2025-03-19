@@ -7,8 +7,6 @@ use App\Mail\NotificacionPagoCompletadoBoleta;
 use App\Mail\NotificacionPagoCompletadoFactura;
 use App\Models\Facturacion;
 use Illuminate\Http\Request;
-use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\Preference\PreferenceClient;
 use App\Models\Pedido;
 use App\Models\Pago;
 use App\Models\Usuario;
@@ -34,19 +32,35 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+//Mercado pago
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\Exceptions\MPApiException;
 
 class PaymentController extends Controller
 {
-
-
-    public function __construct()
+   /**
+     * Initialize MercadoPago with credentials
+     */
+    protected function authenticate()
     {
-        // Agrega las credenciales de MercadoPago
-        MercadoPagoConfig::setAccessToken(env('MERCADOPAGO_ACCESS_TOKEN'));
+        // Get the access token from .env file
+        $mpAccessToken = env('MERCADOPAGO_ACCESS_TOKEN');
+        
+        // Set the token in the SDK's config
+        MercadoPagoConfig::setAccessToken($mpAccessToken);
+        
+        // Set runtime environment (use SERVER for production)
+         MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
     }
+
 
     public function createPreference(Request $request)
     {
+
+        // Initialize MercadoPago
+        $this->authenticate();
+
         // Validar los datos recibidos
         $request->validate([
             'idPedido' => 'required|integer',
@@ -275,14 +289,25 @@ class PaymentController extends Controller
                 return response()->json(['error' => 'ID del pago o tipo no válido'], 400);
             }
 
-            // Consultar a la API de Mercado Pago
+
+            // Fetch payment details from MercadoPago API
             $url = "https://api.mercadopago.com/v1/payments/{$id}";
             $client = new Client();
             $response = $client->request('GET', $url, [
+                'verify' => storage_path('certs/cacert.pem'), // Path to the CA bundle
                 'headers' => [
                     'Authorization' => 'Bearer ' . env('MERCADOPAGO_ACCESS_TOKEN'),
                 ],
             ]);
+
+            // // Consultar a la API de Mercado Pago
+            // $url = "https://api.mercadopago.com/v1/payments/{$id}";
+            // $client = new Client();
+            // $response = $client->request('GET', $url, [
+            //     'headers' => [
+            //         'Authorization' => 'Bearer ' . env('MERCADOPAGO_ACCESS_TOKEN'),
+            //     ],
+            // ]);
 
             $pago = json_decode($response->getBody(), true);
 
