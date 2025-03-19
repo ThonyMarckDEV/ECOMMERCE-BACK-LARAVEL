@@ -171,34 +171,34 @@ class ClienteController extends Controller
      */
     public function uploadProfileImageCliente(Request $request, $idUsuario)
     {
-        $cliente = Usuario::find($idUsuario);
-        if (!$cliente) {
-            return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
-        }
+        // $cliente = Usuario::find($idUsuario);
+        // if (!$cliente) {
+        //     return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+        // }
         
-        if ($request->hasFile('perfil')) {
-            $path = "profiles/$idUsuario";
-            Storage::disk('public')->makeDirectory($path);
+        // if ($request->hasFile('perfil')) {
+        //     $path = "profiles/$idUsuario";
+        //     Storage::disk('public')->makeDirectory($path);
         
-            // Si hay una imagen existente, la elimina
-            if ($cliente->perfil && Storage::disk('public')->exists($cliente->perfil)) {
-                Storage::disk('public')->delete($cliente->perfil);
-            }
+        //     // Si hay una imagen existente, la elimina
+        //     if ($cliente->perfil && Storage::disk('public')->exists($cliente->perfil)) {
+        //         Storage::disk('public')->delete($cliente->perfil);
+        //     }
         
-            // Genera un nombre de archivo aleatorio
-            $extension = $request->file('perfil')->getClientOriginalExtension();
-            $randomName = Str::random(40); // genera 40 caracteres aleatorios
-            $filename = $randomName . '.' . $extension;
+        //     // Genera un nombre de archivo aleatorio
+        //     $extension = $request->file('perfil')->getClientOriginalExtension();
+        //     $randomName = Str::random(40); // genera 40 caracteres aleatorios
+        //     $filename = $randomName . '.' . $extension;
         
-            // Guarda la imagen usando storeAs, definiendo explícitamente la ruta y el nombre
-            $request->file('perfil')->storeAs($path, $filename, 'public');
+        //     // Guarda la imagen usando storeAs, definiendo explícitamente la ruta y el nombre
+        //     $request->file('perfil')->storeAs($path, $filename, 'public');
             
-            // Actualiza la ruta del perfil en el usuario
-            $cliente->perfil = "$path/$filename";
-            $cliente->save();
+        //     // Actualiza la ruta del perfil en el usuario
+        //     $cliente->perfil = "$path/$filename";
+        //     $cliente->save();
             
-            return response()->json(['success' => true, 'filename' => $filename]);
-        }
+        //     return response()->json(['success' => true, 'filename' => $filename]);
+        // }
     }
 
 
