@@ -39,19 +39,16 @@ use MercadoPago\Exceptions\MPApiException;
 
 class PaymentController extends Controller
 {
-   /**
-     * Initialize MercadoPago with credentials
-     */
     protected function authenticate()
     {
-        // Get the access token from .env file
-        $mpAccessToken = env('MERCADOPAGO_ACCESS_TOKEN');
-        
-        // Set the token in the SDK's config
+        $mpAccessToken = config('services.mercadopago.access_token');
+
+        if (!$mpAccessToken) {
+            throw new \Exception("El token de acceso de MercadoPago no está configurado.");
+        }
+
         MercadoPagoConfig::setAccessToken($mpAccessToken);
-        
-        // Set runtime environment (use SERVER for production)
-         MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
     }
 
 

@@ -35,7 +35,7 @@ return [
         ],
     ],
     'mercadopago' => [
-        'token' => env('MP_ACCESS_TOKEN')
+        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
     ],
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
