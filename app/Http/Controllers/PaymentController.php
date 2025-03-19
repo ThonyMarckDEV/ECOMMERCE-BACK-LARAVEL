@@ -48,7 +48,7 @@ class PaymentController extends Controller
         }
 
         MercadoPagoConfig::setAccessToken($mpAccessToken);
-        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+       // MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
     }
 
 
