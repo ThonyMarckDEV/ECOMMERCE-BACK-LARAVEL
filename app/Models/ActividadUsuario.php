@@ -10,7 +10,7 @@ class ActividadUsuario extends Model
     use HasFactory;
 
     protected $table = 'actividad_usuario'; // Nombre personalizado de la tabla
-    protected $fillable = ['idUsuario', 'last_activity', 'dispositivo', 'jwt']; // Campos adicionales
+    protected $fillable = ['idUsuario', 'last_activity', 'dispositivo', 'jwt','refresh_token','session_active']; // Campos adicionales
     public $timestamps = false;
 
     public function usuario()
