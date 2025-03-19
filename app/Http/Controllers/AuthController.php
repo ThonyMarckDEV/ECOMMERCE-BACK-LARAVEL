@@ -284,16 +284,13 @@ class AuthController extends Controller
 
             $dispositivo = $this->obtenerDispositivo();
 
-            // Crear o actualizar el registro de actividad con el nuevo token
-            ActividadUsuario::updateOrCreate(
-                ['idUsuario' => $usuario->idUsuario],
-                [
-                    'last_activity' => now(),
-                    'dispositivo' => $dispositivo,
-                    'jwt' => $token,
-                    'session_active' => true
-                ]
-            );
+            $actividad = ActividadUsuario::create([
+                'idUsuario' => $usuario->idUsuario,
+                'last_activity' => now(),
+                'dispositivo' => $dispositivo,
+                'jwt' => $token,
+                'session_active' => true
+            ]);
 
             // Actualizar estado del usuario
             $usuario->update(['status' => 'loggedOn']);
@@ -304,6 +301,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'token' => $token,
+                'sessionId' => $actividad->id, // Enviar el id de la sesión al frontend
                 'message' => 'Login con Google exitoso, sesiones anteriores cerradas'
             ]);
 
