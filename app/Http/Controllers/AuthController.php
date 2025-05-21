@@ -411,9 +411,6 @@ class AuthController extends Controller
                 'nombres.required' => 'El nombre es obligatorio.',
                 'apellidos.required' => 'Los apellidos son obligatorios.',
                 'apellidos.regex' => 'Debe ingresar al menos dos apellidos separados por un espacio.',
-                // 'dni.required' => 'El DNI es obligatorio.',
-                // 'dni.size' => 'El DNI debe tener exactamente 8 caracteres.',
-                // 'dni.unique' => 'El DNI ya está registrado.',
                 'correo.required' => 'El correo es obligatorio.',
                 'correo.email' => 'El correo debe tener un formato válido.',
                 'correo.unique' => 'El correo ya está registrado.',
@@ -435,7 +432,6 @@ class AuthController extends Controller
                     'required',  
                     'regex:/^[a-zA-ZÀ-ÿ]+(\s[a-zA-ZÀ-ÿ]+)+$/'
                 ],
-                // 'dni' => 'required|string|size:8|unique:usuarios',
                 'correo' => 'required|string|email|max:255|unique:usuarios',
                 'edad' => 'nullable|integer|between:18,100',
                 'nacimiento' => 'nullable|date|before:today',
@@ -500,6 +496,7 @@ class AuthController extends Controller
                    'password' => bcrypt($request->password),
                    'status' => 'loggedOff',
                    'verification_token' => Str::random(60), // Genera un token único
+                   'estado'=> 'activo',
                ]);
               // http://localhost:3000
                 // URL para verificar el correo
@@ -550,6 +547,7 @@ class AuthController extends Controller
                        'password' => bcrypt(Str::random(16)), // Genera una contraseña aleatoria
                        'status' => 'loggedOff',
                        'emailVerified' => 1, // Establecer email_verified como 1 para usuarios de Google
+                       'estado'=> 'activo',
                    ]);
        
                    // Verifica si el usuario fue creado o solo actualizado
