@@ -270,6 +270,8 @@ class AuthController extends Controller
                     'nombre' => $googleUser['given_name'],
                     'apellidos' => $googleUser['family_name'],
                     'status' => 'loggedOn',
+                    'rol' => 'cliente',
+                    
                 ]);
             }
 
