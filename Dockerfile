@@ -1,38 +1,50 @@
-# Usa la imagen oficial de PHP con Apache
-FROM php:8.3-apache
+FROM php:8.2-cli
 
-# Instala dependencias necesarias
-RUN apt-get update && apt-get install -y \
+# Install system dependencies and PHP extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    zip \
+    libzip-dev \
     unzip \
     git \
-    curl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql
+    && docker-php-ext-install gd zip pdo pdo_mysql \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Habilita mod_rewrite para Laravel
-RUN a2enmod rewrite
+# Set the working directory
+WORKDIR /var/www
 
-# Copia la configuración de Apache
-COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+# Copy essential files for Composer and Laravel
+COPY composer.json composer.lock artisan /var/www/
+COPY bootstrap /var/www/bootstrap
+COPY routes /var/www/routes
 
-# Copia los archivos del proyecto
-WORKDIR /var/www/html
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install PHP dependencies without development environment
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+# Copy the rest of the application
 COPY . .
 
-# Instala Composer y las dependencias de Laravel
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader
+# Adjust permissions for Laravel storage and cache directories
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# Permisos adecuados para Laravel
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+# Entrypoint que corre migraciones, crea enlace simbólico y arranca el servidor
+RUN echo '#!/bin/bash\n\
+php artisan config:clear\n\
+php artisan migrate --force || true\n\
+php artisan storage:link || true\n\
+php artisan config:cache\n\
+php artisan serve --host=0.0.0.0 --port=8000' > /entrypoint.sh && chmod +x /entrypoint.sh
 
-# Expone el puerto 80
-EXPOSE 80
+EXPOSE 8000
 
-# Comando de inicio
-CMD ["apache2-foreground"]
+# Opcionalmente antes del ENTRYPOINT o CMD
+RUN echo "upload_max_filesize=100M\n\
+post_max_size=100M\n\
+max_file_uploads=20\n\
+max_execution_time=300" > /usr/local/etc/php/conf.d/uploads.ini
+CMD ["/entrypoint.sh"]
