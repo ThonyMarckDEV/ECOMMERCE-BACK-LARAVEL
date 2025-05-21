@@ -265,6 +265,7 @@ class AuthController extends Controller
             if (!$usuario) {
                 // Si el usuario no existe, crear uno nuevo
                 $usuario = Usuario::create([
+                    'correo' => $googleUser['email'],
                     'username' => $googleUser['given_name'] . $googleUser['family_name'],
                     'rol' => 'cliente',
                     'nombres' => $googleUser['given_name'],
