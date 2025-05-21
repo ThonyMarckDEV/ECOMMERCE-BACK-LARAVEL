@@ -500,7 +500,7 @@ class AuthController extends Controller
                ]);
               // http://localhost:3000
                 // URL para verificar el correo
-                $verificationUrl = "https://ecommerce-thonymarckdev.vercel.app/verificar-correo-token?token_veririficador={$user->verification_token}";
+                $verificationUrl = "https://melymarckstore.vercel.app/verificar-correo-token?token_veririficador={$user->verification_token}";
 
                 // Enviar el correo
                 Mail::to($user->correo)->send(new VerificarCorreo($user, $verificationUrl));
