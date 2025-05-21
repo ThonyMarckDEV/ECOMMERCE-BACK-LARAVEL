@@ -13,7 +13,7 @@ class CrearTablaMantenimiento extends Migration
      */
     public function up()
     {
-        Schema::create('nombre_de_la_tabla', function (Blueprint $table) {
+        Schema::create('mantenimiento', function (Blueprint $table) {
             $table->id(); // Esto crea una columna `id` autoincremental
             $table->tinyInteger('estado')->default(0); // Columna `estado` con valor predeterminado 0
             $table->string('mensaje', 255)->nullable(); // Columna `mensaje` que puede ser nula
@@ -27,6 +27,6 @@ class CrearTablaMantenimiento extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('nombre_de_la_tabla');
+        Schema::dropIfExists('mantenimiento');
     }
 }
